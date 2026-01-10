@@ -330,13 +330,14 @@ function applyFilters() {
     filtered = filtered.filter(o => Boolean(o.is_gigantos));
   }
 
-  // manualne wyszukiwanie po numerze (pole w Found)
   if (number) {
     const n = Number(number);
     if (Number.isFinite(n)) {
       filtered = filtered.filter(o => titleHasNumber(o.title, n));
     } else {
-      filtered = filtered.filter(o => String(o.title ?? "").includes(number));
+      filtered = filtered.filter(o =>
+        String(o.title ?? "").includes(number)
+      );
     }
   }
 
@@ -344,14 +345,25 @@ function applyFilters() {
     filtered = filtered.filter(o => sources.includes(o.source));
   }
 
-  filtered.sort((a, b) =>
-    sort === "oldest"
+  // 🔥 SORT
+  filtered.sort((a, b) => {
+    const aKey = makeMatchKey(a);
+    const bKey = makeMatchKey(b);
+
+    // 👉 oferta z powiadomienia ZAWSZE NA GÓRZE
+    if (highlightedMatchKey) {
+      if (aKey === highlightedMatchKey) return -1;
+      if (bKey === highlightedMatchKey) return 1;
+    }
+
+    return sort === "oldest"
       ? (a.found_at || 0) - (b.found_at || 0)
-      : (b.found_at || 0) - (a.found_at || 0)
-  );
+      : (b.found_at || 0) - (a.found_at || 0);
+  });
 
   renderOffers(filtered);
 }
+
 
 /* =========================
    🧾 RENDER OFFERS
@@ -369,7 +381,7 @@ function renderOffers(list) {
     const isHL = isHighlightedBySelectedNumbers(o);
 
     const matchKey = makeMatchKey(o);
-    const isFromPush = matchKey === highlightedMatchKey;
+    const isFromPush = highlightedMatchKey === matchKey;
 
     el.className = "offer";
     if (isGiga) el.classList.add("offer-gigantos");
@@ -401,7 +413,6 @@ function renderOffers(list) {
   });
 }
 
-
 /* =========================
    🔄 INIT
    ========================= */
@@ -430,9 +441,8 @@ navigator.serviceWorker?.addEventListener("message", event => {
 
   highlightedMatchKey = event.data.match_key;
 
-  // ⬆️ przenieś ofertę z pusha na TOP
   const idx = allOffers.findIndex(
-    o => makeMatchKey(o) === highlightedMatchKey
+    o => o.match_key === highlightedMatchKey
   );
 
   if (idx > -1) {

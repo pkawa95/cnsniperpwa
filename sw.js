@@ -19,27 +19,41 @@ self.addEventListener("push", event => {
 
   const data = event.data.json();
 
-  const options = {
-    body: data.body,
-    icon: data.icon || "/icons/icon-192.png",
-    image: data.image,              // 🔥 MINIATURA
-    badge: data.badge || "/icons/badge.png",
-    vibrate: data.is_gigantos
-      ? [300, 150, 300, 150, 300]
-      : [200, 100, 200],
-    data: {
-      appUrl: data.app_url,
-      offerId: data.offer_id,
-      fromPush: true
-    },
-    tag: "cnsniper-offer",
-    renotify: true
-  };
-
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || "/icons/icon-192.png",
+      image: data.image,
+      badge: "/icons/badge.png",
+      vibrate: [300, 100, 300],
+      data: {
+        match_key: data.match_key,
+        app_url: data.app_url
+      }
+    })
   );
 });
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+
+  const { match_key, app_url } = event.notification.data;
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true })
+      .then(clientsArr => {
+        for (const client of clientsArr) {
+          if (client.url.startsWith(app_url)) {
+            client.focus();
+            client.postMessage({ fromPush: true, match_key });
+            return;
+          }
+        }
+        return clients.openWindow(app_url);
+      })
+  );
+});
+
 // =========================
 // 👉 CLICK NA POWIADOMIENIE
 // =========================
@@ -63,3 +77,4 @@ self.addEventListener("notificationclick", event => {
       })
   );
 });
+
