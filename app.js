@@ -689,7 +689,6 @@ if (id === "rejectedView") {
   showRejectedView("junk"); // start domyślny
 }
 
-<script>
   // iOS PWA – blokada pinch zoom (NIE blokuje scrolla)
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('gesturechange', e => e.preventDefault());
@@ -704,5 +703,5 @@ if (id === "rejectedView") {
     }
     lastTouchEnd = now;
   }, { passive: false });
-</script>
+
 
