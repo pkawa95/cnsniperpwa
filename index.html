@@ -105,7 +105,20 @@
 
       <div id="highlightNumbers" class="numbers-grid"></div>
       <p id="highlightInfo" class="muted"></p>
-      <button onclick="enablePush()">🔔 Włącz powiadomienia</button>
+      <hr class="sep" />
+
+<h3>🔔 Powiadomienia</h3>
+
+<button
+  id="pushBtn"
+  class="push-btn"
+  onclick="handleEnablePush()"
+>
+  🔔 Włącz powiadomienia
+</button>
+
+<p id="pushStatus" class="muted"></p>
+
 
     </section>
 
@@ -126,9 +139,9 @@
 
   <!-- SERVICE WORKER -->
   <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js");
-    }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js");
+  }
   </script>
 
 </body>
