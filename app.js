@@ -3,6 +3,8 @@
    ========================= */
 const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
+const WS_API = API.replace(/^http/, "ws");
+
 
 /* =========================
    🔔 PUSH MATCHING (SINGLE SOURCE OF TRUTH)
@@ -455,3 +457,236 @@ document.addEventListener("DOMContentLoaded", () => {
   // push URL param
   readPushFromURL();
 });
+
+/* =========================
+   ❤️ HEALTH WS
+   ========================= */
+let healthSocket = null;
+
+function formatUptime(sec) {
+  const m = Math.floor(sec / 60);
+  const h = Math.floor(m / 60);
+  return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+}
+
+function connectHealthWS() {
+  if (healthSocket) return;
+
+  healthSocket = new WebSocket("wss://api.cnsniper.pl/ws/health");
+
+  const bar = document.getElementById("healthBar");
+  const text = document.getElementById("healthText");
+  const dot = bar?.querySelector(".dot");
+
+  healthSocket.onopen = () => {
+    dot.className = "dot online";
+  };
+
+  healthSocket.onclose = () => {
+    dot.className = "dot offline";
+    text.textContent = "Offline";
+    healthSocket = null;
+    setTimeout(connectHealthWS, 2000);
+  };
+
+  healthSocket.onmessage = e => {
+  const d = JSON.parse(e.data);
+
+  text.textContent =
+    `Status: ${d.status} | ` +
+    `Uptime: ${formatUptime(d.uptime_seconds)} | ` +
+    `Scan: ${d.is_scanning ? "🟢" : "⏸"} | ` +
+    `Next: ${d.next_scan_in_seconds}s | ` +
+    `Last: ${formatDate(d.last_scan_at)}`;
+};
+}
+document.addEventListener("DOMContentLoaded", connectHealthWS);
+
+function formatDate(ts) {
+  if (!ts) return "—";
+  return new Date(ts * 1000).toLocaleString("pl-PL");
+}
+
+/* =========================
+   ❌ REJECTED STATE
+   ========================= */
+let rejectedType = "junk";        // "junk" | "changes"
+let rejectedOffers = [];
+let rejectedWS = null;
+let rejectedWSKind = null;        // 🔥 KLUCZ – jaki WS jest aktualnie podłączony
+
+/* =========================
+   ❌ REJECTED VIEW SWITCH
+   ========================= */
+function showRejectedView(type) {
+  if (type !== "junk" && type !== "changes") {
+    console.warn("Invalid rejected type:", type);
+    return;
+  }
+
+  // ❌ nic nie rób, jeśli kliknięto ten sam tab
+  if (rejectedType === type) return;
+
+  rejectedType = type;
+
+  // UI tabs
+  document
+    .querySelectorAll("#rejectedView .stats-tab")
+    .forEach(btn => {
+      btn.classList.toggle(
+        "active",
+        btn.dataset.rejected === type
+      );
+    });
+
+  loadRejected(type);
+  connectRejectedWS(type);
+}
+
+/* =========================
+   ❌ LOAD REJECTED (REST)
+   ========================= */
+async function loadRejected(type) {
+  const box = document.getElementById("rejectedOffers");
+  const status = document.getElementById("rejectedStatus");
+  if (!box) return;
+
+  box.innerHTML = "";
+  if (status) status.textContent = "Ładowanie…";
+
+  try {
+    const res = await fetch(`${API}/rejected/${type}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    rejectedOffers = Array.isArray(data)
+      ? data.map(normalizeOffer)
+      : [];
+
+    renderRejectedOffers(rejectedOffers);
+
+    if (status) {
+      status.textContent = rejectedOffers.length
+        ? `Załadowano: ${rejectedOffers.length}`
+        : "Brak pozycji";
+    }
+  } catch (err) {
+    console.error("Rejected load error:", err);
+    if (status) status.textContent = "❌ Błąd ładowania";
+  }
+}
+
+/* =========================
+   ❌ RENDER REJECTED
+   ========================= */
+function renderRejectedOffers(list) {
+  const container = document.getElementById("rejectedOffers");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  list.forEach(o => {
+    const el = document.createElement("div");
+
+    const isGiga = Boolean(o.is_gigantos);
+    const isHL = isHighlightedBySelectedNumbers(o);
+
+    el.className = "offer";
+    if (isGiga) el.classList.add("offer-gigantos");
+    if (isHL) el.classList.add("offer-highlight");
+
+    el.onclick = () => window.open(o.link, "_blank");
+
+    el.innerHTML = `
+      <img src="${o.image ?? ""}" loading="lazy"
+           onerror="this.style.display='none'">
+
+      <div class="offer-body">
+        <span class="badge ${escapeHtml(o.source)}">
+          ${escapeHtml(String(o.source).toUpperCase())}
+        </span>
+
+        <div class="offer-title">${escapeHtml(o.title)}</div>
+        <div class="offer-price">${escapeHtml(o.price ?? "brak ceny")}</div>
+        <div class="offer-date">${escapeHtml(o.found_at_iso ?? "")}</div>
+      </div>
+    `;
+
+    container.appendChild(el);
+  });
+}
+
+/* =========================
+   ❌ REJECTED WEBSOCKET (REALTIME)
+   ========================= */
+function connectRejectedWS(kind) {
+  // ✅ jeśli WS już działa dla tego samego typu → NIC NIE RÓB
+  if (rejectedWS && rejectedWSKind === kind) return;
+
+  // 🔴 zamykamy WS tylko przy zmianie typu
+  if (rejectedWS) {
+    rejectedWS.close();
+    rejectedWS = null;
+  }
+
+  rejectedWSKind = kind;
+
+  // 🔥 bazujemy na WS_URL z appki
+  const baseWS = WS_URL.replace("/ws/offers", "");
+  const url = `${baseWS}/ws/rejected?kind=${kind}`;
+
+  rejectedWS = new WebSocket(url);
+
+  rejectedWS.onopen = () => {
+    console.log("🟢 Rejected WS connected:", kind);
+  };
+
+  rejectedWS.onmessage = ev => {
+    try {
+      const msg = JSON.parse(ev.data);
+
+      // INIT
+      if (msg.type === "init" && Array.isArray(msg.offers)) {
+        rejectedOffers = msg.offers.map(normalizeOffer);
+        renderRejectedOffers(rejectedOffers);
+        return;
+      }
+
+      // NEW
+      if (msg.type === "new" && msg.offer) {
+        const offer = normalizeOffer(msg.offer);
+
+        const key = `${offer.source}:${offer.oid}`;
+        const exists = rejectedOffers.some(
+          o => `${o.source}:${o.oid}` === key
+        );
+        if (exists) return;
+
+        rejectedOffers.unshift(offer);
+        renderRejectedOffers(rejectedOffers);
+      }
+    } catch (e) {
+      console.error("Rejected WS parse error:", e);
+    }
+  };
+
+  rejectedWS.onclose = () => {
+    console.log("🔴 Rejected WS disconnected");
+    rejectedWS = null;
+    rejectedWSKind = null;
+  };
+
+  rejectedWS.onerror = err => {
+    console.error("Rejected WS error:", err);
+  };
+}
+
+/* =========================
+   INIT
+   ========================= */
+if (id === "rejectedView") {
+  showRejectedView("junk"); // start domyślny
+}
+
+

@@ -2,17 +2,48 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Viewport – blokada zoomu + full screen PWA -->
+  <meta
+    name="viewport"
+    content="
+      width=device-width,
+      initial-scale=1,
+      maximum-scale=1,
+      minimum-scale=1,
+      user-scalable=no,
+      viewport-fit=cover
+    "
+  />
 
   <title>Polowanie na Komiksy</title>
 
+  <!-- Favicon klasyczny -->
+  <link rel="icon" href="/assets/favicon.ico">
+
+  <!-- Favicon PNG -->
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+
+  <!-- Apple iOS icons -->
+  <link rel="apple-touch-icon" sizes="120x120" href="/assets/icon-120.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/assets/icon-152.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="/assets/icon-167.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icon-180.png">
+
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#4fdfff" />
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#4fdfff">
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CN Sniper">
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
+
 
 <body>
 
@@ -21,6 +52,10 @@
     <div class="logo-bg"></div>
   </header>
 
+<div id="healthBar" class="health-bar">
+  <span class="dot offline"></span>
+  <span id="healthText">Łączenie…</span>
+</div>
   <!-- 🧠 CONTENT -->
   <main>
 
@@ -63,10 +98,35 @@
     </section>
 
     <!-- ❌ REJECTED -->
-    <section id="rejectedView" class="view">
-      <h2>Odrzucone</h2>
-      <p class="muted">Tu pojawią się odrzucone aukcje</p>
-    </section>
+<section id="rejectedView" class="view">
+  <h2>Odrzucone</h2>
+
+  <!-- 🧭 TABS -->
+  <div class="stats-tabs">
+    <button
+      class="stats-tab active"
+      data-rejected="junk"
+      onclick="showRejectedView('junk')"
+    >
+      🗑️ Śmieci
+    </button>
+
+    <button
+      class="stats-tab"
+      data-rejected="changes"
+      onclick="showRejectedView('changes')"
+    >
+      🔁 Zmiany
+    </button>
+  </div>
+
+  <!-- 🧾 REJECTED OFFERS -->
+  <div id="rejectedOffers" class="offers"></div>
+
+  <p id="rejectedStatus" class="muted"></p>
+</section>
+
+
 
     <!-- 📊 STATS -->
     <section id="statsView" class="view">
@@ -142,6 +202,20 @@
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js");
   }
+    // iOS – blokada pinch zoom
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('gesturechange', e => e.preventDefault());
+  document.addEventListener('gestureend', e => e.preventDefault());
+
+  // blokada double-tap zoom
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
   </script>
 
 </body>

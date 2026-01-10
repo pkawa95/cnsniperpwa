@@ -4,6 +4,7 @@
   --pink: #ff4fd8;
   --blue: #4fdfff;
   --text: #e5e7eb;
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 
 /* RESET */
@@ -25,9 +26,11 @@ body {
    ========================= */
 .topbar {
   position: fixed;
+  padding-bottom: 20px;
+  
   top: 0;
   width: 100%;
-  height: 110px;
+  height: 130px;
   background: linear-gradient(
     180deg,
     rgba(10, 4, 48, 0.9),
@@ -36,10 +39,14 @@ body {
   overflow: hidden;
   z-index: 100;
   box-shadow: 0 0 40px rgba(255, 79, 216, 0.4);
+  
 }
 
+
 .logo-bg {
-  position: absolute;
+  position:absolute;
+  margin-top: 40px;
+  margin-bottom:20px;
   inset: -30px;
   background: url("assets/logo.png") center / contain no-repeat;
   opacity: 1;
@@ -500,4 +507,115 @@ pre {
   font-weight: bold;
   background: gold;
   color: black;
+}
+
+.topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  z-index: -1;
+}
+
+/* =========================
+   ❤️ HEALTH BAR
+   ========================= */
+.health-bar {
+  position: fixed;
+  
+  left: 0;
+  right: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding:
+    8px
+    calc(16px + env(safe-area-inset-left))
+    8px
+    calc(16px + env(safe-area-inset-right));
+
+  font-size: 12px;
+  color: #cfd9ff;
+
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+
+  border-radius: 0 0 14px 14px;
+  z-index: 1000;
+}
+
+
+.health-bar .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot.online {
+  background: #00ff9c;
+  box-shadow: 0 0 6px #00ff9c;
+}
+
+.dot.offline {
+  background: #ff4d6d;
+}
+
+/* =========================
+   🔒 PWA LOCK MODE (GLOBAL)
+   ========================= */
+
+/* Sztywne ramy aplikacji */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;                 /* brak globalnego scrolla */
+  overscroll-behavior: none;        /* brak bounce (Android) */
+  -webkit-overflow-scrolling: auto; /* iOS – bez gumy */
+  touch-action: manipulation;       /* blok pinch / zoom */
+}
+
+/* Zapobiega zaznaczaniu / zoomowaniu elementów */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* INPUTY nadal używalne */
+input,
+textarea,
+select,
+button {
+  user-select: auto;
+  touch-action: manipulation;
+}
+
+/* =========================
+   📜 CONTROLLED SCROLL AREAS
+   ========================= */
+
+/* Jedyny dozwolony scroll (np. main / view) */
+main,
+.view {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =========================
+   🧠 iOS SAFETY FIXES
+   ========================= */
+
+/* iOS – zapobiega przypadkowemu zoomowi tekstu */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Zapobiega rozjechaniu layoutu przy rotate */
+body {
+  position: fixed;
+  inset: 0;
 }
