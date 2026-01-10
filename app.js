@@ -4,19 +4,28 @@
 const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
 
-// =========================
-// 🔔 PUSH MATCHING
-// =========================
+/* =========================
+   🔔 PUSH MATCHING (SINGLE SOURCE OF TRUTH)
+   ========================= */
 let highlightedMatchKey = null;
 
-function makeMatchKey(o) {
-  const title = String(o?.title || "")
+/**
+ * Identyczna logika co w backendzie:
+ * match_key = f"{source}|{normalize_title(title)}"
+ */
+function normalizeTitle(title) {
+  return String(title ?? "")
     .toLowerCase()
-    .replace(/\s+/g, " ")
+    .replace(/[^\w\s]/g, "")     // usuwa znaki specjalne
+    .replace(/\s+/g, " ")        // scala spacje
+    .trim()
     .slice(0, 120);
+}
 
+function makeMatchKey(o) {
   const source = String(o?.source || "unknown");
-  return `${source}::${title}`;
+  const title = normalizeTitle(o?.title || "");
+  return `${source}|${title}`;
 }
 
 /* =========================
@@ -77,11 +86,8 @@ function formatDate(ts) {
 function normalizeOffer(o) {
   const foundAt = o.found_at ?? o.foundAt ?? null;
 
-  return {
+  const normalized = {
     ...o,
-    offer_id:
-      o.offer_id ??
-      `${o.source}:${o.link}`,   // 🔥 IDENTYCZNE JAK W PUSH
     source: detectSource(o),
     link: cleanLink(o.link),
     image_url: o.image ?? o.image_url ?? null,
@@ -89,9 +95,12 @@ function normalizeOffer(o) {
     found_at_iso: foundAt ? formatDate(foundAt) : "",
     is_gigantos: Boolean(o.is_gigantos),
   };
+
+  // 🔥 match_key liczymy zawsze identycznie
+  normalized.match_key = makeMatchKey(normalized);
+
+  return normalized;
 }
-
-
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -102,10 +111,14 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
+/* =========================
+   ⚙️ SETTINGS STORAGE
+   ========================= */
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...defaultSettings };
+
     const parsed = JSON.parse(raw);
     return {
       ...defaultSettings,
@@ -134,11 +147,14 @@ function saveSettings(next) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-// 🔢 szukanie numeru komiksu w tytule: "1", "nr 1", "(1)", "1/2000" itd.
+/* =========================
+   🔢 HIGHLIGHT NUMBERS
+   ========================= */
+
+// szukanie numeru komiksu w tytule: "1", "nr 1", "(1)", "1/2000" itd.
 // - NIE łapie "11" gdy szukasz "1" (granice liczbowe)
 function titleHasNumber(title, n) {
   const t = String(title ?? "");
-  // granice: początek/koniec lub znak nie-cyfrowy
   const re = new RegExp(`(^|\\D)${n}(\\D|$)`);
   return re.test(t);
 }
@@ -157,22 +173,25 @@ function renderSettingsNumbers() {
   box.innerHTML = "";
 
   for (let i = 1; i <= 40; i++) {
-    const id = `hn_${i}`;
     const checked = settings.highlightNumbers.includes(i);
 
     const label = document.createElement("label");
     label.className = "num-pill";
     label.innerHTML = `
-      <input type="checkbox" id="${id}" value="${i}" ${checked ? "checked" : ""}>
+      <input type="checkbox" value="${i}" ${checked ? "checked" : ""}>
       <span>${i}</span>
     `;
 
-    label.querySelector("input").addEventListener("change", () => {
+    label.querySelector("input").addEventListener("change", (e) => {
       const selected = new Set(settings.highlightNumbers);
-      if (label.querySelector("input").checked) selected.add(i);
+
+      if (e.target.checked) selected.add(i);
       else selected.delete(i);
 
-      saveSettings({ ...settings, highlightNumbers: [...selected].sort((a, b) => a - b) });
+      saveSettings({
+        ...settings,
+        highlightNumbers: [...selected].sort((a, b) => a - b),
+      });
 
       if (info) {
         info.textContent = settings.highlightNumbers.length
@@ -180,7 +199,6 @@ function renderSettingsNumbers() {
           : "Brak zaznaczonych numerów.";
       }
 
-      // odśwież widok kafelków
       applyFilters();
     });
 
@@ -198,9 +216,7 @@ function renderSettingsNumbers() {
    🔀 VIEW SWITCH
    ========================= */
 function showView(id) {
-  document.querySelectorAll(".view").forEach(v =>
-    v.classList.remove("active")
-  );
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.getElementById(id)?.classList.add("active");
 
   currentView = id;
@@ -208,10 +224,7 @@ function showView(id) {
   if (id === "foundView") connectWS();
   else disconnectWS();
 
-  if (id === "settingsView") {
-    // wyrenderuj multiwybór 1..40 po wejściu w ustawienia
-    renderSettingsNumbers();
-  }
+  if (id === "settingsView") renderSettingsNumbers();
 }
 
 /* =========================
@@ -232,7 +245,7 @@ function connectWS() {
     socket = null;
 
     if (currentView === "foundView") {
-      setTimeout(connectWS, 1000); // 🔥 szybki reconnect
+      setTimeout(connectWS, 1000);
     }
   };
 
@@ -249,21 +262,19 @@ function connectWS() {
       return;
     }
 
-    // INIT – pełna lista
     if (data.type === "init" && Array.isArray(data.offers)) {
       allOffers = data.offers.map(normalizeOffer);
       applyFilters();
       return;
     }
 
-    // 🔥 NOWA OFERTA LIVE
     if (data.type === "new" && data.offer) {
       allOffers.unshift(normalizeOffer(data.offer));
       applyFilters();
       return;
     }
 
-    // fallback na stary format (gdyby przyszedł "offer" bez type)
+    // fallback
     if (data.offer) {
       allOffers.unshift(normalizeOffer(data.offer));
       applyFilters();
@@ -279,15 +290,8 @@ function disconnectWS() {
 }
 
 /* =========================
-   📊 STATS + SETTINGS
+   ⏱️ INTERVAL
    ========================= */
-async function loadStats() {
-  const res = await fetch(`${API}/statystyki`);
-  const data = await res.json();
-  const el = document.getElementById("stats");
-  if (el) el.textContent = JSON.stringify(data, null, 2);
-}
-
 async function loadInterval() {
   const res = await fetch(`${API}/interval`);
   const data = await res.json();
@@ -335,9 +339,7 @@ function applyFilters() {
     if (Number.isFinite(n)) {
       filtered = filtered.filter(o => titleHasNumber(o.title, n));
     } else {
-      filtered = filtered.filter(o =>
-        String(o.title ?? "").includes(number)
-      );
+      filtered = filtered.filter(o => String(o.title ?? "").includes(number));
     }
   }
 
@@ -345,25 +347,19 @@ function applyFilters() {
     filtered = filtered.filter(o => sources.includes(o.source));
   }
 
-  // 🔥 SORT
+  // 🔥 SORT: push-highlight zawsze na top
   filtered.sort((a, b) => {
-    const aKey = makeMatchKey(a);
-    const bKey = makeMatchKey(b);
-
-    // 👉 oferta z powiadomienia ZAWSZE NA GÓRZE
     if (highlightedMatchKey) {
-      if (aKey === highlightedMatchKey) return -1;
-      if (bKey === highlightedMatchKey) return 1;
+      if (a.match_key === highlightedMatchKey) return -1;
+      if (b.match_key === highlightedMatchKey) return 1;
     }
 
-    return sort === "oldest"
-      ? (a.found_at || 0) - (b.found_at || 0)
-      : (b.found_at || 0) - (a.found_at || 0);
+    if (sort === "oldest") return (a.found_at || 0) - (b.found_at || 0);
+    return (b.found_at || 0) - (a.found_at || 0);
   });
 
   renderOffers(filtered);
 }
-
 
 /* =========================
    🧾 RENDER OFFERS
@@ -379,20 +375,17 @@ function renderOffers(list) {
 
     const isGiga = Boolean(o.is_gigantos);
     const isHL = isHighlightedBySelectedNumbers(o);
-
-    const matchKey = makeMatchKey(o);
-    const isFromPush = highlightedMatchKey === matchKey;
+    const isFromPush = highlightedMatchKey && o.match_key === highlightedMatchKey;
 
     el.className = "offer";
     if (isGiga) el.classList.add("offer-gigantos");
     if (isHL) el.classList.add("offer-highlight");
-    if (isFromPush) el.classList.add("offer-from-push"); // 🔔🔥
+    if (isFromPush) el.classList.add("offer-from-push");
 
     el.onclick = () => window.open(o.link, "_blank");
 
     el.innerHTML = `
-      <img src="${o.image_url ?? ""}" loading="lazy"
-           onerror="this.style.display='none'">
+      <img src="${o.image_url ?? ""}" loading="lazy" onerror="this.style.display='none'">
 
       <div class="offer-body">
         <span class="badge ${escapeHtml(o.source)}">
@@ -414,44 +407,51 @@ function renderOffers(list) {
 }
 
 /* =========================
+   🔔 PUSH EVENTS (SERVICE WORKER MESSAGE)
+   ========================= */
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  if (event.data?.fromPush && event.data.match_key) {
+    highlightedMatchKey = event.data.match_key;
+
+    // przełącz na FOUND
+    showView("foundView");
+
+    // przerysuj i daj na top
+    applyFilters();
+  }
+});
+
+/* =========================
+   🔔 PUSH EVENTS (URL PARAM)
+   iOS często odpala appkę przez openWindow(url?match_key=...)
+   ========================= */
+function readPushFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const mk = params.get("match_key");
+  if (mk) {
+    highlightedMatchKey = mk;
+    showView("foundView");
+    applyFilters();
+  }
+}
+
+/* =========================
    🔄 INIT
    ========================= */
 document.addEventListener("DOMContentLoaded", () => {
   settings = loadSettings();
 
-  loadStats();
   loadInterval();
   connectWS();
 
-  // events dla filtrów w Found
+  // listeners filtrów
   document.querySelectorAll(
     "#sortSelect, #gigantosCheck, #numberSearch, .sources input"
-  ).forEach(el =>
-    el.addEventListener("input", applyFilters)
-  );
+  ).forEach(el => el.addEventListener("input", applyFilters));
 
-  // render multiwyboru od razu (jakby start był na settings)
+  // settings UI
   renderSettingsNumbers();
+
+  // push URL param
+  readPushFromURL();
 });
-
-let highlightedOfferId = null;
-
-navigator.serviceWorker?.addEventListener("message", event => {
-  if (!event.data?.fromPush || !event.data.match_key) return;
-
-  highlightedMatchKey = event.data.match_key;
-
-  const idx = allOffers.findIndex(
-    o => o.match_key === highlightedMatchKey
-  );
-
-  if (idx > -1) {
-    const [hit] = allOffers.splice(idx, 1);
-    allOffers.unshift(hit);
-  }
-
-  showView("foundView");
-  applyFilters();
-});
-
-
