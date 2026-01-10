@@ -2,7 +2,7 @@
    📊 STATS DASHBOARD
    ========================= */
 
-const API_BASE = "http://83.168.90.77:8010";
+const API_BASE = "https://api.cnsniper.pl";
 
 let statsCache = {
   global: null,
