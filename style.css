@@ -479,3 +479,25 @@ pre {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.offer-from-push {
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.9);
+  animation: pushPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pushPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255,215,0,.6); }
+  50% { box-shadow: 0 0 22px rgba(255,215,0,1); }
+}
+
+.push-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7em;
+  font-weight: bold;
+  background: gold;
+  color: black;
+}

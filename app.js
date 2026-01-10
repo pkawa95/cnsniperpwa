@@ -61,11 +61,11 @@ function formatDate(ts) {
 
 // 🧠 normalizacja oferty z backendu
 function normalizeOffer(o) {
-  // backend ma "image" + "found_at" + czasem "is_gigantos"
   const foundAt = o.found_at ?? o.foundAt ?? null;
 
   return {
     ...o,
+    offer_id: o.offer_id ?? o.id ?? null, // 🔥 KLUCZOWE
     source: detectSource(o),
     link: cleanLink(o.link),
     image_url: o.image ?? o.image_url ?? null,
@@ -74,6 +74,7 @@ function normalizeOffer(o) {
     is_gigantos: Boolean(o.is_gigantos),
   };
 }
+
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -349,29 +350,29 @@ function renderOffers(list) {
 
     const isGiga = Boolean(o.is_gigantos);
     const isHL = isHighlightedBySelectedNumbers(o);
+    const isFromPush = highlightedOfferId && o.offer_id === highlightedOfferId;
 
     el.className = "offer";
     if (isGiga) el.classList.add("offer-gigantos");
     if (isHL) el.classList.add("offer-highlight");
+    if (isFromPush) el.classList.add("offer-from-push"); // 🔥
 
     el.onclick = () => window.open(o.link, "_blank");
 
-    const img = o.image_url ?? "";
-    const title = escapeHtml(o.title);
-    const price = escapeHtml(o.price ?? "brak ceny");
-    const date = escapeHtml(o.found_at_iso ?? "");
-
     el.innerHTML = `
-      <img src="${img}" loading="lazy" onerror="this.style.display='none'">
+      <img src="${o.image_url ?? ""}" loading="lazy" onerror="this.style.display='none'">
       <div class="offer-body">
-        <span class="badge ${escapeHtml(o.source)}">
-          ${escapeHtml(String(o.source).toUpperCase())}
+        <span class="badge ${o.source}">
+          ${String(o.source).toUpperCase()}
         </span>
-        ${isGiga ? `<span class="giga-tag">GIGANTOS</span>` : ``}
+
+        ${isGiga ? `<span class="giga-tag">🚨 GIGANTOS</span>` : ``}
         ${isHL ? `<span class="hl-tag">NUMER</span>` : ``}
-        <div class="offer-title">${title}</div>
-        <div class="offer-price">${price}</div>
-        <div class="offer-date">${date}</div>
+        ${isFromPush ? `<span class="push-tag">🔔 z powiadomienia</span>` : ``}
+
+        <div class="offer-title">${escapeHtml(o.title)}</div>
+        <div class="offer-price">${escapeHtml(o.price ?? "brak ceny")}</div>
+        <div class="offer-date">${escapeHtml(o.found_at_iso ?? "")}</div>
       </div>
     `;
 
@@ -399,3 +400,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // render multiwyboru od razu (jakby start był na settings)
   renderSettingsNumbers();
 });
+
+let highlightedOfferId = null;
+
+navigator.serviceWorker?.addEventListener("message", event => {
+  if (event.data?.fromPush && event.data.offerId) {
+    highlightedOfferId = event.data.offerId;
+
+    // 🔥 przenieś ofertę na TOP
+    const idx = allOffers.findIndex(o => o.offer_id === highlightedOfferId);
+    if (idx > -1) {
+      const [hit] = allOffers.splice(idx, 1);
+      allOffers.unshift(hit);
+    }
+
+    // pokaż widok ofert
+    showView("foundView");
+
+    applyFilters();
+  }
+});
+
