@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polowanie na Komiksy</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- 🔝 HEADER -->
+  <header class="topbar">
+    <div class="logo-bg"></div>
+  </header>
+
+  <!-- 🧠 CONTENT -->
+  <main>
+
+    <!-- ✅ FOUND -->
+    <section id="foundView" class="view active">
+      <h2>Znalezione</h2>
+
+      <!-- 🔎 FILTERS -->
+      <div class="filters">
+        <div class="filters-row">
+          <select id="sortSelect">
+            <option value="newest">Najnowsze</option>
+            <option value="oldest">Najstarsze</option>
+          </select>
+
+          <label class="checkbox">
+            <input type="checkbox" id="gigantosCheck" />
+            Gigantos
+          </label>
+
+          <input
+            type="number"
+            id="numberSearch"
+            placeholder="Nr komiksu (np. 1, 2, 11)"
+          />
+        </div>
+
+        <div class="filters-row">
+          <div class="sources">
+            <label><input type="checkbox" value="olx" checked /> OLX</label>
+            <label><input type="checkbox" value="allegro" checked /> Allegro</label>
+            <label><input type="checkbox" value="vinted" checked /> Vinted</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🧾 OFFERS -->
+      <div id="offers" class="offers"></div>
+
+      <p id="wsStatus" class="muted"></p>
+    </section>
+
+    <!-- ✅ REJECTED -->
+    <section id="rejectedView" class="view">
+      <h2>Odrzucone</h2>
+      <p class="muted">Tu pojawią się odrzucone aukcje</p>
+    </section>
+
+    <!-- ✅ STATS -->
+    <section id="statsView" class="view">
+  <h2>📊 Statystyki</h2>
+
+  <div class="stats-tabs">
+    <button class="stats-tab active" data-view="global" onclick="showStatsView('global')">
+      🌍 Globalne
+    </button>
+    <button class="stats-tab" data-view="today" onclick="showStatsView('today')">
+      📅 Dziś
+    </button>
+    <button class="stats-tab" data-view="weekly" onclick="showStatsView('weekly')">
+      📆 Tydzień
+    </button>
+  </div>
+
+  <div id="statsDashboard"></div>
+</section>
+
+
+    <!-- ✅ SETTINGS -->
+    <section id="settingsView" class="view">
+  <h2>Ustawienia</h2>
+
+  <label>
+    Interwał skanowania (sekundy)
+    <input type="number" id="intervalInput" min="30" />
+  </label>
+
+  <button onclick="updateInterval()">Zapisz</button>
+  <p id="intervalStatus" class="muted"></p>
+
+  <hr class="sep" />
+
+  <h3>Wyróżnianie numerów (1–40)</h3>
+  <p class="muted">
+    Zaznacz numery, które mają dawać <b>zieloną ramkę</b>, jeśli wystąpią w tytule.
+  </p>
+
+  <div id="highlightNumbers" class="numbers-grid"></div>
+  <p id="highlightInfo" class="muted"></p>
+</section>
+
+
+  </main>
+
+  <!-- 🔻 BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button onclick="showView('foundView')">Znalezione</button>
+    <button onclick="showView('rejectedView')">Odrzucone</button>
+    <button onclick="showView('statsView')">Statystyki</button>
+    <button onclick="showView('settingsView')">Ustawienia</button>
+  </nav>
+
+  <script src="app.js"></script>
+    <script src="stats.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+
+
+  </script>
+</body>
+</html>
