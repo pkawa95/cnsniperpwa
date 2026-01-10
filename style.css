@@ -676,3 +676,29 @@ body {
   padding-top: calc(120px + var(--safe-top-shift));
   padding-bottom: calc(80px + var(--safe-bottom-shift));
 }
+
+/* =========================
+   📱 SAFE AREA TUNING (iOS)
+   ========================= */
+
+/* 👉 TU REGULUJESZ */
+:root {
+  --safe-top-shift: -12px;    /* podnieś topbar (np. -8px, -12px, -16px) */
+  --safe-bottom-shift: -10px; /* podnieś bottom-nav */
+}
+
+/* 🔝 TOP BAR – bliżej notcha */
+.topbar {
+  top: calc(var(--safe-top) + var(--safe-top-shift));
+}
+
+/* 🔻 BOTTOM NAV – wyżej */
+.bottom-nav {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safe-bottom-shift));
+}
+
+/* 📄 CONTENT – korekta paddingów */
+body {
+  padding-top: calc(120px + var(--safe-top-shift));
+  padding-bottom: calc(80px + var(--safe-bottom-shift));
+}
