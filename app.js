@@ -65,7 +65,9 @@ function normalizeOffer(o) {
 
   return {
     ...o,
-    offer_id: o.offer_id ?? o.id ?? null, // 🔥 KLUCZOWE
+    offer_id:
+      o.offer_id ??
+      `${o.source}:${o.link}`,   // 🔥 IDENTYCZNE JAK W PUSH
     source: detectSource(o),
     link: cleanLink(o.link),
     image_url: o.image ?? o.image_url ?? null,
@@ -74,6 +76,7 @@ function normalizeOffer(o) {
     is_gigantos: Boolean(o.is_gigantos),
   };
 }
+
 
 
 function escapeHtml(str) {
@@ -407,17 +410,14 @@ navigator.serviceWorker?.addEventListener("message", event => {
   if (event.data?.fromPush && event.data.offerId) {
     highlightedOfferId = event.data.offerId;
 
-    // 🔥 przenieś ofertę na TOP
+    // 🔥 PRZENIEŚ NA TOP
     const idx = allOffers.findIndex(o => o.offer_id === highlightedOfferId);
     if (idx > -1) {
       const [hit] = allOffers.splice(idx, 1);
       allOffers.unshift(hit);
     }
 
-    // pokaż widok ofert
     showView("foundView");
-
     applyFilters();
   }
 });
-
