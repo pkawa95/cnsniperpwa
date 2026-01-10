@@ -766,3 +766,26 @@ main {
       gdy gdzieś zniknęły reguły .view */
 .view { display: none; }
 .view.active { display: block; }
+
+/* =========================
+   📱 NOTCH FILL – TOP SAFE AREA
+   ========================= */
+
+/* tło strony pod notchem */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+
+  height: env(safe-area-inset-top, 0px);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 4, 48, 0.95),
+    rgba(5, 1, 13, 0.95)
+  );
+
+  z-index: 999;
+  pointer-events: none;
+}
