@@ -1,84 +1,58 @@
-/* =========================
-   📱 SAFE AREA CONFIG
-   ========================= */
 :root {
-  --topbar-height: 130px;
-  --topbar-shift: -18px; /* im bardziej na minus, tym WYŻEJ */
+  --bg: #05010d;
+  --panel: rgba(10, 5, 30, 0.88);
+  --pink: #ff4fd8;
+  --blue: #4fdfff;
+  --text: #e5e7eb;
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 
-/* =========================
-   📄 BODY LAYOUT
-   ========================= */
+/* RESET */
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
   background: radial-gradient(circle at top, #1b0c3f, #05010d);
   color: var(--text);
-
-  /* 🔥 UWZGLĘDNIA NOTCH + SHIFT */
-  padding-top: calc(
-    var(--topbar-height)
-    + env(safe-area-inset-top, 0px)
-    + var(--topbar-shift)
-  );
-
+  padding-top: 120px;
   padding-bottom: 80px;
 }
 
 /* =========================
-   🔝 TOP BAR (SAFE)
+   🔝 TOP BAR
    ========================= */
 .topbar {
   position: fixed;
-  left: 0;
-  right: 0;
-
-  /* 🔥 przyklejony do notcha */
-  top: calc(env(safe-area-inset-top, 0px) + var(--topbar-shift));
-
-  height: var(--topbar-height);
   padding-bottom: 20px;
-
+  
+  top: 0;
+  width: 100%;
+  height: 130px;
   background: linear-gradient(
     180deg,
     rgba(10, 4, 48, 0.9),
     rgba(5, 1, 13, 0.95)
   );
-
   overflow: hidden;
   z-index: 100;
   box-shadow: 0 0 40px rgba(255, 79, 216, 0.4);
+  
 }
 
-/* 👉 DOPEŁNIENIE TŁA POD NOTCH */
-.topbar::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
 
-  top: calc(-1 * env(safe-area-inset-top, 0px));
-  height: env(safe-area-inset-top, 0px);
-
-  background: inherit;
-}
-
-/* =========================
-   🌴 LOGO
-   ========================= */
 .logo-bg {
-  position: absolute;
-  inset: -30px;
+  position:absolute;
   margin-top: 40px;
-  margin-bottom: 20px;
-
+  margin-bottom:20px;
+  inset: -30px;
   background: url("assets/logo.png") center / contain no-repeat;
   opacity: 1;
-
   filter:
     drop-shadow(0 0 12px rgba(255, 79, 216, 0.8))
     drop-shadow(0 0 24px rgba(79, 223, 255, 0.6));
-
   animation: logoGlow 5s ease-in-out infinite;
 }
 
@@ -93,6 +67,43 @@ body {
       drop-shadow(0 0 18px rgba(255, 79, 216, 1))
       drop-shadow(0 0 36px rgba(79, 223, 255, 0.9));
   }
+}
+
+/* =========================
+   🧠 MAIN / VIEWS
+   ========================= */
+main {
+  padding: 16px;
+}
+
+.view {
+  display: none;
+  background: var(--panel);
+  padding: 18px;
+  border-radius: 16px;
+  box-shadow: 0 0 30px rgba(79, 223, 255, 0.25);
+}
+
+.view.active {
+  display: block;
+}
+
+h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: var(--blue);
+  text-shadow: 0 0 10px var(--blue);
+}
+
+pre {
+  background: #020012;
+  padding: 12px;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.muted {
+  opacity: 0.7;
 }
 
 /* =========================
@@ -671,65 +682,71 @@ body {
 }
 
 /* =========================
-   📐 LAYOUT CONSTANTS
+   ✅ FIX: DOMKNIĘCIE + KOLORY + KLIKALNOŚĆ NAV
+   (Wklej na sam KONIEC style.css)
    ========================= */
+
+/* 1) Upewnij się, że poprzednie reguły są domknięte */
+main::-webkit-scrollbar { display: none; }  /* <- pełna reguła, domknięta */
+
+/* 2) Przywróć kolory (bo łatwo się nadpisują) */
+body {
+  background: radial-gradient(circle at top, #1b0c3f, #05010d);
+  color: var(--text);
+}
+
+/* 3) Klucz: main ma być POD paskami, a paski mają być klikalne */
+.topbar,
+.bottom-nav,
+.health-bar {
+  z-index: 1000;
+}
+
+/* pseudo-elementy potrafią blokować tapy */
+.topbar::before,
+.bottom-nav::after {
+  pointer-events: none;
+}
+
+/* main ma niżej niż fixed bary */
+main {
+  z-index: 1;
+}
+
+/* 4) Jeśli coś nadal blokuje klik w nav – wymuś priorytet nav */
+.bottom-nav {
+  z-index: 2000;
+}
+
+/* 5) Layout środkowego contentu dopasowany do Twojego HTML:
+      topbar + healthbar + bottom-nav */
 :root {
   --topbar-height: 130px;
   --topbar-shift: -18px;
 
+  --healthbar-height: 32px;      /* dopasuj jeśli masz wyższy health-bar */
   --bottom-nav-height: 70px;
   --bottom-nav-shift: -14px;
 }
 
-/* =========================
-   🧱 ROOT LAYOUT
-   ========================= */
+/* trzymamy scroll tylko w main (jak native) */
 html,
 body {
-  margin: 0;
-  padding: 0;
   height: 100%;
-  overflow: hidden; /* ❗️scroll WYŁĄCZONY globalnie */
+  overflow: hidden;
 }
 
-/* =========================
-   🔝 TOP BAR (SAFE)
-   ========================= */
-.topbar {
+/* main jako “viewport container” */
+main {
   position: fixed;
   left: 0;
   right: 0;
-  top: calc(env(safe-area-inset-top, 0px) + var(--topbar-shift));
-  height: var(--topbar-height);
-  z-index: 1000;
-}
 
-/* =========================
-   🔻 BOTTOM NAV (SAFE)
-   ========================= */
-.bottom-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-shift));
-  height: var(--bottom-nav-height);
-  z-index: 1000;
-}
-
-/* =========================
-   🧠 CENTRAL CONTENT (KEY!)
-   ========================= */
-main,
-#appContent {
-  position: absolute;
-  left: 0;
-  right: 0;
-
-  /* 🔥 dokładnie między barami */
   top: calc(
     env(safe-area-inset-top, 0px)
     + var(--topbar-height)
     + var(--topbar-shift)
+    + var(--healthbar-height)
   );
 
   bottom: calc(
@@ -745,9 +762,7 @@ main,
   box-sizing: border-box;
 }
 
-/* =========================
-   📱 iOS SCROLL STABILITY
-   ========================= */
-main::-webkit-scrollbar {
-  display: none;
-}
+/* 6) Bez tego czasem “wszystko na jednej stronie” wygląda jakby nie przełączało widoków,
+      gdy gdzieś zniknęły reguły .view */
+.view { display: none; }
+.view.active { display: block; }
