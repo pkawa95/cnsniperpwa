@@ -1,8 +1,9 @@
 /* =========================
    🌐 CONFIG
    ========================= */
-const API = "http://83.168.90.77:8010";
-const WS_URL = "ws://83.168.90.77:8010/ws/offers";
+const API = "https://api.cnsniper.pl";
+const WS_URL = "wss://api.cnsniper.pl/ws/offers";
+
 
 /* =========================
    🧠 STATE
