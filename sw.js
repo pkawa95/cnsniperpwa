@@ -12,31 +12,31 @@ self.addEventListener("activate", event => {
 // 🔔 PUSH
 // =========================
 self.addEventListener("push", event => {
-  let data = {};
+  if (!event.data) return;
 
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch {
-      data = { title: "Nowa oferta", body: "Sprawdź aplikację" };
-    }
-  }
-
-  const title = data.title || "🆕 Nowa oferta";
-  const options = {
-    body: data.body || "Kliknij, aby zobaczyć",
-    icon: "/assets/icon-192.png",
-    badge: "/assets/icon-192.png",
-    vibrate: [200, 100, 200],
-    data: {
-      url: data.url || "/"
-    }
-  };
+  const data = event.data.json();
 
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: data.badge,
+      image: data.image,
+      data: {
+        url: data.url
+      }
+    })
   );
 });
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+
+  event.waitUntil(
+    clients.openWindow(event.notification.data.url)
+  );
+});
+
 
 // =========================
 // 👉 CLICK
