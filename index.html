@@ -3,11 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>Polowanie na Komiksy</title>
 
-  <link rel="manifest" href="manifest.json" />
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#4fdfff" />
+
+  <!-- CSS -->
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
   <!-- 🔝 HEADER -->
@@ -53,59 +59,53 @@
 
       <!-- 🧾 OFFERS -->
       <div id="offers" class="offers"></div>
-
       <p id="wsStatus" class="muted"></p>
     </section>
 
-    <!-- ✅ REJECTED -->
+    <!-- ❌ REJECTED -->
     <section id="rejectedView" class="view">
       <h2>Odrzucone</h2>
       <p class="muted">Tu pojawią się odrzucone aukcje</p>
     </section>
 
-    <!-- ✅ STATS -->
+    <!-- 📊 STATS -->
     <section id="statsView" class="view">
-  <h2>📊 Statystyki</h2>
+      <h2>📊 Statystyki</h2>
 
-  <div class="stats-tabs">
-    <button class="stats-tab active" data-view="global" onclick="showStatsView('global')">
-      🌍 Globalne
-    </button>
-    <button class="stats-tab" data-view="today" onclick="showStatsView('today')">
-      📅 Dziś
-    </button>
-    <button class="stats-tab" data-view="weekly" onclick="showStatsView('weekly')">
-      📆 Tydzień
-    </button>
-  </div>
+      <div class="stats-tabs">
+        <button class="stats-tab active" data-view="global"
+                onclick="showStatsView('global')">🌍 Globalne</button>
+        <button class="stats-tab" data-view="today"
+                onclick="showStatsView('today')">📅 Dziś</button>
+        <button class="stats-tab" data-view="weekly"
+                onclick="showStatsView('weekly')">📆 Tydzień</button>
+      </div>
 
-  <div id="statsDashboard"></div>
-</section>
+      <div id="statsDashboard"></div>
+    </section>
 
-
-    <!-- ✅ SETTINGS -->
+    <!-- ⚙️ SETTINGS -->
     <section id="settingsView" class="view">
-  <h2>Ustawienia</h2>
+      <h2>Ustawienia</h2>
 
-  <label>
-    Interwał skanowania (sekundy)
-    <input type="number" id="intervalInput" min="30" />
-  </label>
+      <label>
+        Interwał skanowania (sekundy)
+        <input type="number" id="intervalInput" min="30" />
+      </label>
 
-  <button onclick="updateInterval()">Zapisz</button>
-  <p id="intervalStatus" class="muted"></p>
+      <button onclick="updateInterval()">Zapisz</button>
+      <p id="intervalStatus" class="muted"></p>
 
-  <hr class="sep" />
+      <hr class="sep" />
 
-  <h3>Wyróżnianie numerów (1–40)</h3>
-  <p class="muted">
-    Zaznacz numery, które mają dawać <b>zieloną ramkę</b>, jeśli wystąpią w tytule.
-  </p>
+      <h3>Wyróżnianie numerów (1–40)</h3>
+      <p class="muted">
+        Zaznacz numery, które mają dawać <b>zieloną ramkę</b>, jeśli wystąpią w tytule.
+      </p>
 
-  <div id="highlightNumbers" class="numbers-grid"></div>
-  <p id="highlightInfo" class="muted"></p>
-</section>
-
+      <div id="highlightNumbers" class="numbers-grid"></div>
+      <p id="highlightInfo" class="muted"></p>
+    </section>
 
   </main>
 
@@ -117,14 +117,17 @@
     <button onclick="showView('settingsView')">Ustawienia</button>
   </nav>
 
+  <!-- JS -->
   <script src="app.js"></script>
-    <script src="stats.js"></script>
+  <script src="stats.js"></script>
+  <script src="subscribe.js"></script>
+
+  <!-- SERVICE WORKER -->
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js");
+      navigator.serviceWorker.register("/sw.js");
     }
-
-
   </script>
+
 </body>
 </html>
