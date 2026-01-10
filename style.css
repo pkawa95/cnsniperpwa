@@ -670,3 +670,84 @@ body {
   overscroll-behavior-y: contain;
 }
 
+/* =========================
+   📐 LAYOUT CONSTANTS
+   ========================= */
+:root {
+  --topbar-height: 130px;
+  --topbar-shift: -18px;
+
+  --bottom-nav-height: 70px;
+  --bottom-nav-shift: -14px;
+}
+
+/* =========================
+   🧱 ROOT LAYOUT
+   ========================= */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden; /* ❗️scroll WYŁĄCZONY globalnie */
+}
+
+/* =========================
+   🔝 TOP BAR (SAFE)
+   ========================= */
+.topbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(env(safe-area-inset-top, 0px) + var(--topbar-shift));
+  height: var(--topbar-height);
+  z-index: 1000;
+}
+
+/* =========================
+   🔻 BOTTOM NAV (SAFE)
+   ========================= */
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-shift));
+  height: var(--bottom-nav-height);
+  z-index: 1000;
+}
+
+/* =========================
+   🧠 CENTRAL CONTENT (KEY!)
+   ========================= */
+main,
+#appContent {
+  position: absolute;
+  left: 0;
+  right: 0;
+
+  /* 🔥 dokładnie między barami */
+  top: calc(
+    env(safe-area-inset-top, 0px)
+    + var(--topbar-height)
+    + var(--topbar-shift)
+  );
+
+  bottom: calc(
+    env(safe-area-inset-bottom, 0px)
+    + var(--bottom-nav-height)
+    + var(--bottom-nav-shift)
+  );
+
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* =========================
+   📱 iOS SCROLL STABILITY
+   ========================= */
+main::-webkit-scrollbar {
+  display: none;
+}
