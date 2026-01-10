@@ -1,7 +1,7 @@
 /* =========================
    🌐 CONFIG
    ========================= */
-const API = "https://api.cnsniper.pl/";
+const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
 
 
