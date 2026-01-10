@@ -1,5 +1,5 @@
 const VAPID_PUBLIC_KEY = "BLcaMptBg8239UIkJ6CSoRWhNdAXpR_UA1ZF5DP2PZgKmOKlIYuFuVvIAbCs9inWK7KVaNZ-jKb-n7DKB6t3DyE";
-const PUSH_API = "/api/push/subscribe";
+const PUSH_API = "https://api.cnsniper.pl/api/push/subscribe";
 
 async function handleEnablePush() {
   const status = document.getElementById("pushStatus");
