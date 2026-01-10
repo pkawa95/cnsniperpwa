@@ -46,20 +46,20 @@ self.addEventListener("push", event => {
 self.addEventListener("notificationclick", event => {
   event.notification.close();
 
-  const { appUrl, offerId, fromPush } = event.notification.data || {};
-  const targetUrl = `${appUrl}?fromPush=1&offerId=${encodeURIComponent(offerId)}`;
+  const { app_url, match_key } = event.notification.data || {};
+  const url = `${app_url}?fromPush=1`;
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true })
-      .then(clientList => {
-        for (const client of clientList) {
-          if (client.url.startsWith(appUrl)) {
-            client.focus();
-            client.postMessage({ fromPush, offerId });
+      .then(list => {
+        for (const c of list) {
+          if (c.url.startsWith(app_url)) {
+            c.focus();
+            c.postMessage({ fromPush: true, match_key });
             return;
           }
         }
-        return clients.openWindow(targetUrl);
+        return clients.openWindow(url);
       })
   );
 });

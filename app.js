@@ -4,6 +4,20 @@
 const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
 
+// =========================
+// 🔔 PUSH MATCHING
+// =========================
+let highlightedMatchKey = null;
+
+function makeMatchKey(o) {
+  const title = String(o?.title || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .slice(0, 120);
+
+  const source = String(o?.source || "unknown");
+  return `${source}::${title}`;
+}
 
 /* =========================
    🧠 STATE
@@ -353,20 +367,24 @@ function renderOffers(list) {
 
     const isGiga = Boolean(o.is_gigantos);
     const isHL = isHighlightedBySelectedNumbers(o);
-    const isFromPush = highlightedOfferId && o.offer_id === highlightedOfferId;
+
+    const matchKey = makeMatchKey(o);
+    const isFromPush = matchKey === highlightedMatchKey;
 
     el.className = "offer";
     if (isGiga) el.classList.add("offer-gigantos");
     if (isHL) el.classList.add("offer-highlight");
-    if (isFromPush) el.classList.add("offer-from-push"); // 🔥
+    if (isFromPush) el.classList.add("offer-from-push"); // 🔔🔥
 
     el.onclick = () => window.open(o.link, "_blank");
 
     el.innerHTML = `
-      <img src="${o.image_url ?? ""}" loading="lazy" onerror="this.style.display='none'">
+      <img src="${o.image_url ?? ""}" loading="lazy"
+           onerror="this.style.display='none'">
+
       <div class="offer-body">
-        <span class="badge ${o.source}">
-          ${String(o.source).toUpperCase()}
+        <span class="badge ${escapeHtml(o.source)}">
+          ${escapeHtml(String(o.source).toUpperCase())}
         </span>
 
         ${isGiga ? `<span class="giga-tag">🚨 GIGANTOS</span>` : ``}
@@ -382,6 +400,7 @@ function renderOffers(list) {
     container.appendChild(el);
   });
 }
+
 
 /* =========================
    🔄 INIT
@@ -407,17 +426,22 @@ document.addEventListener("DOMContentLoaded", () => {
 let highlightedOfferId = null;
 
 navigator.serviceWorker?.addEventListener("message", event => {
-  if (event.data?.fromPush && event.data.offerId) {
-    highlightedOfferId = event.data.offerId;
+  if (!event.data?.fromPush || !event.data.match_key) return;
 
-    // 🔥 PRZENIEŚ NA TOP
-    const idx = allOffers.findIndex(o => o.offer_id === highlightedOfferId);
-    if (idx > -1) {
-      const [hit] = allOffers.splice(idx, 1);
-      allOffers.unshift(hit);
-    }
+  highlightedMatchKey = event.data.match_key;
 
-    showView("foundView");
-    applyFilters();
+  // ⬆️ przenieś ofertę z pusha na TOP
+  const idx = allOffers.findIndex(
+    o => makeMatchKey(o) === highlightedMatchKey
+  );
+
+  if (idx > -1) {
+    const [hit] = allOffers.splice(idx, 1);
+    allOffers.unshift(hit);
   }
+
+  showView("foundView");
+  applyFilters();
 });
+
+
