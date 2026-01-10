@@ -571,7 +571,7 @@ html,
 body {
   width: 100%;
   height: 100%;
-  overflow: hidden;                 /* brak globalnego scrolla */
+              /* brak globalnego scrolla */
   overscroll-behavior: none;        /* brak bounce (Android) */
   -webkit-overflow-scrolling: auto; /* iOS – bez gumy */
   touch-action: manipulation;       /* blok pinch / zoom */
@@ -616,6 +616,29 @@ html {
 
 /* Zapobiega rozjechaniu layoutu przy rotate */
 body {
-  position: fixed;
   inset: 0;
+}
+
+/* =========================
+   🔒 PWA – ZOOM LOCK (SAFE)
+   ========================= */
+
+/* NIE blokuje scrolla */
+html {
+  touch-action: manipulation;   /* blok pinch */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Usuwa double-tap zoom, NIE scroll */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Elementy interaktywne nadal OK */
+a,
+button,
+input,
+textarea,
+select {
+  touch-action: manipulation;
 }
