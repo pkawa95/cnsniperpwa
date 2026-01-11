@@ -789,3 +789,39 @@ body::before {
   z-index: 999;
   pointer-events: none;
 }
+
+/* =========================
+   🔝 TOPBAR – FULL SAFE AREA
+   ========================= */
+
+:root {
+  --topbar-height: 130px; /* wysokość WIDOCZNEJ części */
+}
+
+.topbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+
+  /* 🔥 zaczyna się OD SAMEJ KRAWĘDZI TELEFONU */
+  top: 0;
+
+  /* 🔥 REALNA wysokość = content + notch */
+  height: calc(
+    var(--topbar-height)
+    + env(safe-area-inset-top, 0px)
+  );
+
+  /* 👇 content topbara schodzi pod notch */
+  padding-top: env(safe-area-inset-top, 0px);
+
+  background: linear-gradient(
+    180deg,
+    rgba(10, 4, 48, 0.95),
+    rgba(5, 1, 13, 0.95)
+  );
+
+  overflow: hidden;
+  z-index: 1000;
+  box-shadow: 0 0 40px rgba(255, 79, 216, 0.4);
+}
