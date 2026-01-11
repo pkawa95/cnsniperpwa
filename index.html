@@ -45,6 +45,30 @@
 
 
 <body>
+<!-- 🔒 LOGIN OVERLAY -->
+<div id="loginOverlay" class="login-overlay hidden">
+  <div class="login-box">
+    <h1>🔐 CN Sniper</h1>
+
+    <input
+      id="loginUser"
+      type="text"
+      placeholder="Login"
+      autocomplete="username"
+    />
+
+    <input
+      id="loginPass"
+      type="password"
+      placeholder="Hasło"
+      autocomplete="current-password"
+    />
+
+    <button onclick="handleLogin()">Zaloguj</button>
+
+    <p id="loginError" class="login-error"></p>
+  </div>
+</div>
 
   <!-- 🔝 HEADER -->
   <header class="topbar">

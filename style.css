@@ -826,3 +826,67 @@ body::before {
   box-shadow: 0 0 40px rgba(255, 79, 216, 0.4);
 }
 
+/* =========================
+   🔒 LOGIN OVERLAY
+   ========================= */
+
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: radial-gradient(circle at top, #1b0c3f, #05010d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-overlay.hidden {
+  display: none;
+}
+
+.login-box {
+  background: rgba(10, 5, 30, 0.95);
+  border-radius: 20px;
+  padding: 28px;
+  width: 90%;
+  max-width: 360px;
+  box-shadow:
+    0 0 40px rgba(255, 79, 216, 0.6),
+    0 0 80px rgba(79, 223, 255, 0.4);
+  text-align: center;
+}
+
+.login-box h1 {
+  margin-bottom: 20px;
+  color: var(--blue);
+  text-shadow: 0 0 12px var(--blue);
+}
+
+.login-box input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,79,216,.4);
+  background: #140022;
+  color: white;
+  font-size: 1rem;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  font-weight: 800;
+  background: linear-gradient(135deg, #4fdfff, #ff4fd8);
+  color: black;
+  box-shadow: 0 0 20px rgba(79, 223, 255, 0.6);
+}
+
+.login-error {
+  margin-top: 12px;
+  color: #ff4d6d;
+  font-size: 0.85rem;
+}

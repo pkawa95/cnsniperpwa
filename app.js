@@ -5,6 +5,74 @@ const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
 const WS_API = API.replace(/^http/, "ws");
 
+/* =========================
+   🔐 AUTH (PWA – ONE TIME LOGIN)
+   ========================= */
+
+const AUTH_TOKEN_KEY = "cn_auth_token";
+
+/* 🔍 sprawdzenie czy już zalogowany */
+function isLoggedIn() {
+  return Boolean(localStorage.getItem(AUTH_TOKEN_KEY));
+}
+
+/* 🔓 pokaż / ukryj login */
+function showLogin() {
+  document.getElementById("loginOverlay")?.classList.remove("hidden");
+}
+
+function hideLogin() {
+  document.getElementById("loginOverlay")?.classList.add("hidden");
+}
+
+/* 🚪 login */
+async function handleLogin() {
+  const user = document.getElementById("loginUser").value.trim();
+  const pass = document.getElementById("loginPass").value;
+  const err = document.getElementById("loginError");
+
+  err.textContent = "";
+
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: user, password: pass }),
+    });
+
+    if (!res.ok) throw new Error("Błędny login lub hasło");
+
+    const data = await res.json();
+    localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+
+    hideLogin();
+    bootAppAfterLogin();
+
+  } catch (e) {
+    err.textContent = "❌ Nieprawidłowy login lub hasło";
+  }
+}
+
+async function apiFetch(url, options = {}) {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+/* 🚀 start aplikacji po zalogowaniu */
+function bootAppAfterLogin() {
+  // normalny start Twojej appki
+  loadInterval();
+  connectWS();
+  connectHealthWS();
+  loadStatsDashboard();
+}
 
 /* =========================
    🔔 PUSH MATCHING (SINGLE SOURCE OF TRUTH)
@@ -295,7 +363,7 @@ function disconnectWS() {
    ⏱️ INTERVAL
    ========================= */
 async function loadInterval() {
-  const res = await fetch(`${API}/interval`);
+  const res = await apiFetch(`${API}/interval`)
   const data = await res.json();
   const input = document.getElementById("intervalInput");
   if (input) input.value = data.scan_interval;
@@ -443,19 +511,12 @@ function readPushFromURL() {
 document.addEventListener("DOMContentLoaded", () => {
   settings = loadSettings();
 
-  loadInterval();
-  connectWS();
-
-  // listeners filtrów
-  document.querySelectorAll(
-    "#sortSelect, #gigantosCheck, #numberSearch, .sources input"
-  ).forEach(el => el.addEventListener("input", applyFilters));
-
-  // settings UI
-  renderSettingsNumbers();
-
-  // push URL param
-  readPushFromURL();
+  if (isLoggedIn()) {
+    hideLogin();
+    bootAppAfterLogin();
+  } else {
+    showLogin();
+  }
 });
 
 /* =========================
@@ -555,7 +616,7 @@ async function loadRejected(type) {
   if (status) status.textContent = "Ładowanie…";
 
   try {
-    const res = await fetch(`${API}/rejected/${type}`);
+    const res = await apiFetch(`${API}/rejected/${type}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
