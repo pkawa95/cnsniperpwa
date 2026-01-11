@@ -540,10 +540,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (isLoggedIn()) {
     hideLogin();
     bootAppAfterLogin();
+    bindFilterEvents(); // 🔥🔥🔥 TO JEST KLUCZ
   } else {
     showLogin();
   }
 });
+
 
 /* =========================
    ❤️ HEALTH WS
@@ -865,4 +867,28 @@ async function bootAppAfterLogin() {
   connectWS();
   connectHealthWS();
   loadStatsDashboard();
+}
+
+function bindFilterEvents() {
+  // GIGANTOS
+  document
+    .getElementById("gigantosCheck")
+    ?.addEventListener("change", applyFilters);
+
+  // SORT
+  document
+    .getElementById("sortSelect")
+    ?.addEventListener("change", applyFilters);
+
+  // NUMER SEARCH (live)
+  document
+    .getElementById("numberSearch")
+    ?.addEventListener("input", applyFilters);
+
+  // ŹRÓDŁA
+  document
+    .querySelectorAll(".sources input")
+    .forEach(el =>
+      el.addEventListener("change", applyFilters)
+    );
 }
