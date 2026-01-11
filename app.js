@@ -87,14 +87,6 @@ async function apiFetch(url, options = {}) {
 }
 
 /* 🚀 start aplikacji po zalogowaniu */
-function bootAppAfterLogin() {
-  // normalny start Twojej appki
-  loadInterval();
-  connectWS();
-  connectHealthWS();
-  loadStatsDashboard();
-}
-
 /* =========================
    🔔 PUSH MATCHING (SINGLE SOURCE OF TRUTH)
    ========================= */
@@ -786,9 +778,11 @@ function connectRejectedWS(kind) {
 /* =========================
    INIT
    ========================= */
-if (id === "rejectedView") {
-  showRejectedView("junk"); // start domyślny
-}
+   document.addEventListener("DOMContentLoaded", () => {
+  if (document.getElementById("rejectedView")?.classList.contains("active")) {
+    showRejectedView("junk");
+  }
+});
 
   // iOS PWA – blokada pinch zoom (NIE blokuje scrolla)
   document.addEventListener('gesturestart', e => e.preventDefault());
@@ -878,15 +872,17 @@ async function loadHighlightNumbersFromBackend() {
 }
 
 async function bootAppAfterLogin() {
-  await loadHighlightNumbersFromBackend(); // GET (z tokenem)
-  checkHighlightServerStatus(); 
+  await loadHighlightNumbersFromBackend(); // ⬅️ token już istnieje
+  connectHighlightWS();
+  sendHighlightState();
+
   loadInterval();
-  connectHighlightCheckWS(); // 🔥
-  sendHighlightState();  
   connectWS();
   connectHealthWS();
   loadStatsDashboard();
 }
+
+
 
 function bindFilterEvents() {
   // GIGANTOS
@@ -912,45 +908,78 @@ function bindFilterEvents() {
     );
 }
 
-function connectHighlightCheckWS() {
-  if (highlightCheckWS) return;
-
-  highlightCheckWS = new WebSocket(
-    "wss://api.cnsniper.pl/ws/highlight-check"
-  );
-
-  highlightCheckWS.onopen = () => {
-    sendHighlightState();
-  };
-
-  highlightCheckWS.onmessage = e => {
-    const data = JSON.parse(e.data);
-
-    if (data.status === "ok") {
-      updateHighlightServerStatus("ok", "Numery zsynchronizowane");
-    } else {
-      updateHighlightServerStatus(
-        "error",
-        "Rozjazd z serwerem"
-      );
-    }
-  };
-
-  highlightCheckWS.onclose = () => {
-    highlightCheckWS = null;
-    setTimeout(connectHighlightCheckWS, 2000);
-  };
-}
-
 function sendHighlightState() {
-  if (
-    !highlightCheckWS ||
-    highlightCheckWS.readyState !== WebSocket.OPEN
-  ) return;
+  if (!highlightWS || highlightWS.readyState !== WebSocket.OPEN) return;
 
-  highlightCheckWS.send(JSON.stringify({
-    numbers: settings.highlightNumbers
+  console.log("📤 highlight_state →", settings.highlightNumbers);
+
+  highlightWS.send(JSON.stringify({
+    type: "highlight_state",
+    numbers: settings.highlightNumbers,
   }));
 }
 
 
+function sendHighlightState() {
+  if (!highlightWS || highlightWS.readyState !== 1) return;
+
+  console.log(
+    "📤 highlight_state →",
+    settings.highlightNumbers
+  );
+
+  highlightWS.send(JSON.stringify({
+    type: "highlight_state",
+    numbers: settings.highlightNumbers,
+  }));
+}
+
+
+
+let highlightWS = null;
+
+function connectHighlightWS() {
+  if (highlightWS) return;
+
+  highlightWS = new WebSocket("wss://api.cnsniper.pl/ws/highlight");
+
+  highlightWS.onopen = () => {
+    console.log("🟢 Highlight WS connected");
+    sendHighlightState();
+  };
+
+  highlightWS.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      console.log("📥 highlight WS:", msg);
+
+      if (msg.type === "highlight_check") {
+        updateHighlightServerStatus(
+          msg.equal ? "ok" : "error",
+          msg.equal
+            ? "Stan zgodny z serwerem ✓"
+            : "Stan RÓŻNI SIĘ od serwera ⚠️"
+        );
+      }
+    } catch {}
+  };
+
+  highlightWS.onclose = () => {
+    console.log("🔴 Highlight WS closed");
+    highlightWS = null;
+    setTimeout(connectHighlightWS, 2000);
+  };
+}
+
+function updateHighlightServerStatus(state, message) {
+  const box = document.getElementById("highlightServerStatus");
+  if (!box) return;
+
+  box.classList.remove("ok", "error", "pending");
+  box.classList.add(state);
+
+  const text = box.querySelector(".text");
+  if (text) {
+    text.textContent = message;
+  }
+}

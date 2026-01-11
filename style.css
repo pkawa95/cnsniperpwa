@@ -1029,3 +1029,29 @@ body::before {
 .hl-status.pending .dot {
   background: #f1c40f;
 }
+
+.highlight-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.highlight-status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.highlight-status.pending .dot {
+  background: #aaa;
+}
+
+.highlight-status.ok .dot {
+  background: #2ecc71;
+}
+
+.highlight-status.error .dot {
+  background: #e74c3c;
+}
