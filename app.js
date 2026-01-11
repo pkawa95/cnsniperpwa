@@ -529,9 +529,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  updatePushButtonFromBrowser();
-});
 
 /* =========================
    ❤️ HEALTH WS
@@ -769,37 +766,37 @@ if (id === "rejectedView") {
   document.addEventListener('gesturechange', e => e.preventDefault());
   document.addEventListener('gestureend', e => e.preventDefault());
 
-async function handleEnablePush() {
-  const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.getSubscription();
 
-  if (sub) {
+
+const PUSH_ENABLED_KEY = "cn_push_enabled";
+
+async function handleEnablePush() {
+  if (localStorage.getItem(PUSH_ENABLED_KEY)) {
     // 🔕 WYŁĄCZ
     await fetch(`${API}/push/unsubscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ endpoint: sub.endpoint })
+      body: JSON.stringify({ endpoint: "all" })
     });
 
-    await sub.unsubscribe();
-    await updatePushButtonFromBrowser();
+    localStorage.removeItem(PUSH_ENABLED_KEY);
+    updatePushButton(false);
     return;
   }
 
-  // 🔔 WŁĄCZ
-  await subscribeForPush();
-  await updatePushButtonFromBrowser();
+  // 🔔 WŁĄCZ (Twoja istniejąca logika subscribe)
+  const ok = await subscribeForPush(); // ← masz to już
+  if (ok) {
+    localStorage.setItem(PUSH_ENABLED_KEY, "1");
+    updatePushButton(true);
+  }
 }
 
-
-async function updatePushButtonFromBrowser() {
+function updatePushButton(enabled) {
   const btn = document.getElementById("pushBtn");
   const status = document.getElementById("pushStatus");
-  if (!btn) return;
 
-  const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.getSubscription();
-  const enabled = Boolean(sub);
+  if (!btn) return;
 
   if (enabled) {
     btn.textContent = "🔕 Wyłącz powiadomienia";
@@ -813,5 +810,3 @@ async function updatePushButtonFromBrowser() {
     if (status) status.textContent = "Powiadomienia wyłączone";
   }
 }
-
-
