@@ -267,9 +267,13 @@ function renderSettingsNumbers() {
       else selected.delete(i);
 
       saveSettings({
-        ...settings,
-        highlightNumbers: [...selected].sort((a, b) => a - b),
-      });
+  ...settings,
+  highlightNumbers: [...selected].sort((a, b) => a - b),
+});
+
+// 🔥 SYNC DO BACKENDU
+syncHighlightNumbersToBackend();
+
 
       if (info) {
         info.textContent = settings.highlightNumbers.length
@@ -528,7 +532,6 @@ document.addEventListener("DOMContentLoaded", () => {
     showLogin();
   }
 });
-
 
 /* =========================
    ❤️ HEALTH WS
@@ -809,4 +812,44 @@ function updatePushButton(enabled) {
       "linear-gradient(135deg, #4fdfff, #ff4fd8)";
     if (status) status.textContent = "Powiadomienia wyłączone";
   }
+}
+
+async function syncHighlightNumbersToBackend() {
+  try {
+    await apiFetch(`${API}/push/numbers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        numbers: settings.highlightNumbers
+      })
+    });
+  } catch (e) {
+    console.error("❌ Sync highlight numbers failed", e);
+  }
+}
+
+async function loadHighlightNumbersFromBackend() {
+  try {
+    const res = await apiFetch(`${API}/settings/highlight-numbers`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+
+    const data = await res.json();
+
+    if (Array.isArray(data.numbers)) {
+      saveSettings({
+        ...settings,
+        highlightNumbers: data.numbers,
+      });
+    }
+  } catch (e) {
+    console.warn("⚠️ Nie udało się pobrać highlight numbers:", e);
+  }
+}
+
+async function bootAppAfterLogin() {
+  await loadHighlightNumbersFromBackend(); // 🔥 TO
+  loadInterval();
+  connectWS();
+  connectHealthWS();
+  loadStatsDashboard();
 }
