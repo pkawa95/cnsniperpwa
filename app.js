@@ -541,6 +541,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hideLogin();
     bootAppAfterLogin();
     bindFilterEvents(); // 🔥🔥🔥 TO JEST KLUCZ
+    readPushFromURL();
   } else {
     showLogin();
   }
@@ -837,10 +838,14 @@ async function syncHighlightNumbersToBackend() {
         numbers: settings.highlightNumbers
       })
     });
+
+    updateHighlightServerStatus("ok", "Zapisano ✓");
+
   } catch (e) {
-    console.error("❌ Sync highlight numbers failed", e);
+    updateHighlightServerStatus("error", "Błąd zapisu");
   }
 }
+
 
 
 async function loadHighlightNumbersFromBackend() {
@@ -863,6 +868,7 @@ async function loadHighlightNumbersFromBackend() {
 
 async function bootAppAfterLogin() {
   await loadHighlightNumbersFromBackend(); // GET (z tokenem)
+  checkHighlightServerStatus(); 
   loadInterval();
   connectWS();
   connectHealthWS();
@@ -891,4 +897,38 @@ function bindFilterEvents() {
     .forEach(el =>
       el.addEventListener("change", applyFilters)
     );
+}
+
+async function updateHighlightServerStatus(state, message) {
+  const box = document.getElementById("highlightServerStatus");
+  if (!box) return;
+
+  box.classList.remove("ok", "pending", "error");
+  box.classList.add(state);
+
+  const text = box.querySelector(".text");
+  if (text) text.textContent = message;
+}
+
+async function checkHighlightServerStatus() {
+  updateHighlightServerStatus("pending", "Łączenie z serwerem…");
+
+  try {
+    const res = await apiFetch(`${API}/settings/highlight-numbers`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+
+    const data = await res.json();
+
+    updateHighlightServerStatus(
+      "ok",
+      `Połączono · wersja ${data.version}`
+    );
+  } catch (err) {
+    console.warn("Highlight status error:", err);
+
+    updateHighlightServerStatus(
+      "error",
+      "Brak połączenia z serwerem"
+    );
+  }
 }

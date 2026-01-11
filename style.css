@@ -959,3 +959,46 @@ body::before {
 .interval-save:active {
   transform: scale(0.97);
 }
+
+.server-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-top: 6px;
+  user-select: none;
+}
+
+.server-status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: gray;
+  box-shadow: 0 0 6px transparent;
+}
+
+/* 🟢 OK */
+.server-status.ok .dot {
+  background: #2ecc71;
+  box-shadow: 0 0 6px rgba(46, 204, 113, 0.7);
+}
+.server-status.ok .text {
+  color: #2ecc71;
+}
+
+/* 🟡 pending */
+.server-status.pending .dot {
+  background: #f1c40f;
+}
+.server-status.pending .text {
+  color: #f1c40f;
+}
+
+/* 🔴 error */
+.server-status.error .dot {
+  background: #e74c3c;
+  box-shadow: 0 0 6px rgba(231, 76, 60, 0.7);
+}
+.server-status.error .text {
+  color: #e74c3c;
+}
