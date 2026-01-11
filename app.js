@@ -5,6 +5,14 @@ const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
 const WS_API = API.replace(/^http/, "ws");
 
+// 🔄 SERVICE WORKER UPDATE HANDLER
+navigator.serviceWorker?.addEventListener("message", event => {
+  if (event.data?.type === "SW_UPDATED") {
+    console.log("🔄 App updated – reloading");
+    location.reload();
+  }
+});
+
 /* =========================
    🔐 AUTH (PWA – ONE TIME LOGIN)
    ========================= */
