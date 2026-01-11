@@ -791,7 +791,7 @@ async function handleEnablePush() {
   }
 
   // 🔔 WŁĄCZ
-  await subscribeForPush(); // NIE sprawdzamy return
+  await subscribeForPush();
   await updatePushButtonFromBrowser();
 }
 
@@ -821,20 +821,18 @@ async function updatePushButtonFromBrowser() {
 
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
-
   const enabled = Boolean(sub);
 
   if (enabled) {
-    localStorage.setItem(PUSH_ENABLED_KEY, "1");
     btn.textContent = "🔕 Wyłącz powiadomienia";
     btn.style.background =
       "linear-gradient(135deg, #ff4d6d, #ffb347)";
     if (status) status.textContent = "Powiadomienia włączone ✅";
   } else {
-    localStorage.removeItem(PUSH_ENABLED_KEY);
     btn.textContent = "🔔 Włącz powiadomienia";
     btn.style.background =
       "linear-gradient(135deg, #4fdfff, #ff4fd8)";
     if (status) status.textContent = "Powiadomienia wyłączone";
   }
 }
+
