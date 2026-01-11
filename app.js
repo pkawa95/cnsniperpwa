@@ -530,7 +530,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  updatePushButton(Boolean(localStorage.getItem(PUSH_ENABLED_KEY)));
+  updatePushButtonFromBrowser();
 });
 
 /* =========================
@@ -774,25 +774,25 @@ if (id === "rejectedView") {
 const PUSH_ENABLED_KEY = "cn_push_enabled";
 
 async function handleEnablePush() {
-  if (localStorage.getItem(PUSH_ENABLED_KEY)) {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+
+  if (sub) {
     // 🔕 WYŁĄCZ
     await fetch(`${API}/push/unsubscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ endpoint: "all" })
+      body: JSON.stringify({ endpoint: sub.endpoint })
     });
 
-    localStorage.removeItem(PUSH_ENABLED_KEY);
-    updatePushButton(false);
+    await sub.unsubscribe();
+    await updatePushButtonFromBrowser();
     return;
   }
 
-  // 🔔 WŁĄCZ (Twoja istniejąca logika subscribe)
-  const ok = await subscribeForPush(); // ← masz to już
-  if (ok) {
-    localStorage.setItem(PUSH_ENABLED_KEY, "1");
-    updatePushButton(true);
-  }
+  // 🔔 WŁĄCZ
+  await subscribeForPush(); // NIE sprawdzamy return
+  await updatePushButtonFromBrowser();
 }
 
 function updatePushButton(enabled) {
@@ -807,6 +807,31 @@ function updatePushButton(enabled) {
       "linear-gradient(135deg, #ff4d6d, #ffb347)";
     if (status) status.textContent = "Powiadomienia włączone ✅";
   } else {
+    btn.textContent = "🔔 Włącz powiadomienia";
+    btn.style.background =
+      "linear-gradient(135deg, #4fdfff, #ff4fd8)";
+    if (status) status.textContent = "Powiadomienia wyłączone";
+  }
+}
+
+async function updatePushButtonFromBrowser() {
+  const btn = document.getElementById("pushBtn");
+  const status = document.getElementById("pushStatus");
+  if (!btn) return;
+
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+
+  const enabled = Boolean(sub);
+
+  if (enabled) {
+    localStorage.setItem(PUSH_ENABLED_KEY, "1");
+    btn.textContent = "🔕 Wyłącz powiadomienia";
+    btn.style.background =
+      "linear-gradient(135deg, #ff4d6d, #ffb347)";
+    if (status) status.textContent = "Powiadomienia włączone ✅";
+  } else {
+    localStorage.removeItem(PUSH_ENABLED_KEY);
     btn.textContent = "🔔 Włącz powiadomienia";
     btn.style.background =
       "linear-gradient(135deg, #4fdfff, #ff4fd8)";
