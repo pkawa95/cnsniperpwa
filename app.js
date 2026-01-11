@@ -13,6 +13,7 @@ navigator.serviceWorker?.addEventListener("message", event => {
   }
 });
 
+let highlightCheckWS = null;
 /* =========================
    🔢 HIGHLIGHT NUMBERS – SYNC TIMER
    ========================= */
@@ -275,36 +276,46 @@ function renderSettingsNumbers() {
     label.querySelector("input").addEventListener("change", (e) => {
       const selected = new Set(settings.highlightNumbers);
 
-      if (e.target.checked) selected.add(i);
-      else selected.delete(i);
+      if (e.target.checked) {
+        selected.add(i);
+      } else {
+        selected.delete(i);
+      }
 
+      // ✅ 1. zapisz lokalnie
       saveSettings({
-  ...settings,
-  highlightNumbers: [...selected].sort((a, b) => a - b),
-});
+        ...settings,
+        highlightNumbers: [...selected].sort((a, b) => a - b),
+      });
 
-// 🔥 SYNC DO BACKENDU
-syncHighlightNumbersDebounced();
+      // ✅ 2. wyślij stan do WS (CHECKCHECK)
+      sendHighlightState();
 
+      // ✅ 3. sync do backendu (REST, debounce)
+      syncHighlightNumbersDebounced();
 
+      // ✅ 4. info pod gridem
       if (info) {
         info.textContent = settings.highlightNumbers.length
           ? `Zaznaczone: ${settings.highlightNumbers.join(", ")}`
           : "Brak zaznaczonych numerów.";
       }
 
+      // ✅ 5. natychmiastowe lifesearch
       applyFilters();
     });
 
     box.appendChild(label);
   }
 
+  // initial info
   if (info) {
     info.textContent = settings.highlightNumbers.length
       ? `Zaznaczone: ${settings.highlightNumbers.join(", ")}`
       : "Brak zaznaczonych numerów.";
   }
 }
+
 
 /* =========================
    🔀 VIEW SWITCH
@@ -870,6 +881,8 @@ async function bootAppAfterLogin() {
   await loadHighlightNumbersFromBackend(); // GET (z tokenem)
   checkHighlightServerStatus(); 
   loadInterval();
+  connectHighlightCheckWS(); // 🔥
+  sendHighlightState();  
   connectWS();
   connectHealthWS();
   loadStatsDashboard();
@@ -899,36 +912,45 @@ function bindFilterEvents() {
     );
 }
 
-async function updateHighlightServerStatus(state, message) {
-  const box = document.getElementById("highlightServerStatus");
-  if (!box) return;
+function connectHighlightCheckWS() {
+  if (highlightCheckWS) return;
 
-  box.classList.remove("ok", "pending", "error");
-  box.classList.add(state);
+  highlightCheckWS = new WebSocket(
+    "wss://api.cnsniper.pl/ws/highlight-check"
+  );
 
-  const text = box.querySelector(".text");
-  if (text) text.textContent = message;
+  highlightCheckWS.onopen = () => {
+    sendHighlightState();
+  };
+
+  highlightCheckWS.onmessage = e => {
+    const data = JSON.parse(e.data);
+
+    if (data.status === "ok") {
+      updateHighlightServerStatus("ok", "Numery zsynchronizowane");
+    } else {
+      updateHighlightServerStatus(
+        "error",
+        "Rozjazd z serwerem"
+      );
+    }
+  };
+
+  highlightCheckWS.onclose = () => {
+    highlightCheckWS = null;
+    setTimeout(connectHighlightCheckWS, 2000);
+  };
 }
 
-async function checkHighlightServerStatus() {
-  updateHighlightServerStatus("pending", "Łączenie z serwerem…");
+function sendHighlightState() {
+  if (
+    !highlightCheckWS ||
+    highlightCheckWS.readyState !== WebSocket.OPEN
+  ) return;
 
-  try {
-    const res = await apiFetch(`${API}/settings/highlight-numbers`);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-
-    const data = await res.json();
-
-    updateHighlightServerStatus(
-      "ok",
-      `Połączono · wersja ${data.version}`
-    );
-  } catch (err) {
-    console.warn("Highlight status error:", err);
-
-    updateHighlightServerStatus(
-      "error",
-      "Brak połączenia z serwerem"
-    );
-  }
+  highlightCheckWS.send(JSON.stringify({
+    numbers: settings.highlightNumbers
+  }));
 }
+
+

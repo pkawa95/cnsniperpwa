@@ -1002,3 +1002,30 @@ body::before {
 .server-status.error .text {
   color: #e74c3c;
 }
+
+.hl-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.hl-status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #999;
+}
+
+.hl-status.ok .dot {
+  background: #2ecc71;
+}
+
+.hl-status.error .dot {
+  background: #e74c3c;
+}
+
+.hl-status.pending .dot {
+  background: #f1c40f;
+}
