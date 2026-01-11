@@ -1,6 +1,6 @@
 // sw.js
 
-const VERSION = "1.0"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
+const VERSION = "1.1"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
 const CACHE_NAME = `cnsniper-${VERSION}`;
 
 const CORE_ASSETS = [

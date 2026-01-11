@@ -171,13 +171,21 @@
     <section id="settingsView" class="view">
       <h2>Ustawienia</h2>
 
-      <label>
-        Interwał skanowania (sekundy)
-        <input type="number" id="intervalInput" min="30" />
-      </label>
+      <div class="interval-box">
+  <input
+    type="number"
+    id="intervalInput"
+    min="30"
+    placeholder="Interwał (sek.)"
+  />
 
-      <button onclick="updateInterval()">Zapisz</button>
-      <p id="intervalStatus" class="muted"></p>
+  <button class="interval-save" onclick="updateInterval()">
+    💾 Zapisz
+  </button>
+</div>
+
+<p id="intervalStatus" class="muted"></p>
+
 
       <hr class="sep" />
 
@@ -206,6 +214,9 @@
     </section>
 
   </main>
+<footer class="app-footer">
+  © Copyright by <b>PiotrFlix</b> 2026
+</footer>
 
   <!-- 🔻 BOTTOM NAV -->
   <nav class="bottom-nav">

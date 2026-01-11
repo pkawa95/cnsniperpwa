@@ -392,9 +392,11 @@ async function updateInterval() {
   }
 
   const st = document.getElementById("intervalStatus");
-  if (st) st.textContent = "Zapisano ✅";
+if (st) {
+  st.textContent = "✅ Zapisano";
+  setTimeout(() => st.textContent = "", 2000);
 }
-
+}
 /* =========================
    🧠 FILTER + SORT
    ========================= */
@@ -525,6 +527,10 @@ document.addEventListener("DOMContentLoaded", () => {
   } else {
     showLogin();
   }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  updatePushButton(Boolean(localStorage.getItem(PUSH_ENABLED_KEY)));
 });
 
 /* =========================
@@ -765,3 +771,45 @@ if (id === "rejectedView") {
 
 
 
+const PUSH_ENABLED_KEY = "cn_push_enabled";
+
+async function handleEnablePush() {
+  if (localStorage.getItem(PUSH_ENABLED_KEY)) {
+    // 🔕 WYŁĄCZ
+    await fetch(`${API}/push/unsubscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint: "all" })
+    });
+
+    localStorage.removeItem(PUSH_ENABLED_KEY);
+    updatePushButton(false);
+    return;
+  }
+
+  // 🔔 WŁĄCZ (Twoja istniejąca logika subscribe)
+  const ok = await subscribeForPush(); // ← masz to już
+  if (ok) {
+    localStorage.setItem(PUSH_ENABLED_KEY, "1");
+    updatePushButton(true);
+  }
+}
+
+function updatePushButton(enabled) {
+  const btn = document.getElementById("pushBtn");
+  const status = document.getElementById("pushStatus");
+
+  if (!btn) return;
+
+  if (enabled) {
+    btn.textContent = "🔕 Wyłącz powiadomienia";
+    btn.style.background =
+      "linear-gradient(135deg, #ff4d6d, #ffb347)";
+    if (status) status.textContent = "Powiadomienia włączone ✅";
+  } else {
+    btn.textContent = "🔔 Włącz powiadomienia";
+    btn.style.background =
+      "linear-gradient(135deg, #4fdfff, #ff4fd8)";
+    if (status) status.textContent = "Powiadomienia wyłączone";
+  }
+}
