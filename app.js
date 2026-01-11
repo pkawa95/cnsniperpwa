@@ -14,6 +14,18 @@ navigator.serviceWorker?.addEventListener("message", event => {
 });
 
 /* =========================
+   🔢 HIGHLIGHT NUMBERS – SYNC TIMER
+   ========================= */
+let highlightSyncTimer = null;
+
+function syncHighlightNumbersDebounced() {
+  clearTimeout(highlightSyncTimer);
+  highlightSyncTimer = setTimeout(() => {
+    syncHighlightNumbersToBackend();
+  }, 300);
+}
+
+/* =========================
    🔐 AUTH (PWA – ONE TIME LOGIN)
    ========================= */
 
@@ -816,7 +828,7 @@ function updatePushButton(enabled) {
 
 async function syncHighlightNumbersToBackend() {
   try {
-    await apiFetch(`${API}/push/numbers`, {
+    await apiFetch(`${API}/settings/highlight-numbers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -827,6 +839,7 @@ async function syncHighlightNumbersToBackend() {
     console.error("❌ Sync highlight numbers failed", e);
   }
 }
+
 
 async function loadHighlightNumbersFromBackend() {
   try {
@@ -847,18 +860,9 @@ async function loadHighlightNumbersFromBackend() {
 }
 
 async function bootAppAfterLogin() {
-  await loadHighlightNumbersFromBackend(); // 🔥 TO
+  await loadHighlightNumbersFromBackend(); // GET (z tokenem)
   loadInterval();
   connectWS();
   connectHealthWS();
   loadStatsDashboard();
-}
-
-let highlightSyncTimer = null;
-
-function syncHighlightNumbersDebounced() {
-  clearTimeout(highlightSyncTimer);
-  highlightSyncTimer = setTimeout(() => {
-    syncHighlightNumbersToBackend();
-  }, 300);
 }

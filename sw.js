@@ -1,8 +1,14 @@
 // sw.js
 
-const VERSION = "1.7"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
+/* =========================
+   🧱 VERSIONING
+   ========================= */
+const VERSION = "1.8"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
 const CACHE_NAME = `cnsniper-${VERSION}`;
 
+/* =========================
+   📦 CORE ASSETS
+   ========================= */
 const CORE_ASSETS = [
   "/",
   "/index.html",
@@ -11,6 +17,8 @@ const CORE_ASSETS = [
   "/stats.js",
   "/subscribe.js",
   "/manifest.json",
+  "/icons/icon-192.png",
+  "/icons/badge.png",
 ];
 
 /* =========================
@@ -31,19 +39,24 @@ self.addEventListener("install", event => {
    ========================= */
 self.addEventListener("activate", event => {
   event.waitUntil(
-    Promise.all([
+    (async () => {
       // 🧹 usuń stare cache
-      caches.keys().then(keys =>
-        Promise.all(
-          keys
-            .filter(k => k !== CACHE_NAME)
-            .map(k => caches.delete(k))
-        )
-      ),
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter(k => k !== CACHE_NAME)
+          .map(k => caches.delete(k))
+      );
 
-      // 🟢 przejmij kontrolę OD RAZU
-      self.clients.claim()
-    ])
+      // 🟢 przejmij kontrolę natychmiast
+      await self.clients.claim();
+
+      // 🔄 powiadom clienty o update
+      const clients = await self.clients.matchAll({ type: "window" });
+      clients.forEach(c =>
+        c.postMessage({ type: "SW_UPDATED" })
+      );
+    })()
   );
 });
 
@@ -53,44 +66,51 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const req = event.request;
 
-  // 🔥 HTML ZAWSZE Z SIECI (najważniejsze)
+  // ❌ nie cache’ujemy requestów innych niż GET
+  if (req.method !== "GET") {
+    return;
+  }
+
+  // 🌍 HTML – NETWORK FIRST
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
-        .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(req, copy));
+      (async () => {
+        try {
+          const res = await fetch(req);
+
+          // 🔥 KLON TYLKO DO CACHE
+          const clone = res.clone();
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(req, clone);
+
           return res;
-        })
-        .catch(() => caches.match(req))
+        } catch (err) {
+          const cached = await caches.match(req);
+          return cached || Response.error();
+        }
+      })()
     );
     return;
   }
 
-  // 🧠 ASSETS: cache-first + update w tle
+  // 📦 ASSETS – CACHE FIRST + UPDATE W TLE
   event.respondWith(
-    caches.match(req).then(cached => {
+    (async () => {
+      const cached = await caches.match(req);
+
       const fetchPromise = fetch(req)
-        .then(res => {
-          caches.open(CACHE_NAME).then(c => c.put(req, res.clone()));
+        .then(async res => {
+          if (res && res.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(req, res.clone());
+          }
           return res;
         })
         .catch(() => cached);
 
       return cached || fetchPromise;
-    })
+    })()
   );
-});
-
-/* =========================
-   🔄 AUTO-REFRESH CLIENTS
-   ========================= */
-self.addEventListener("activate", () => {
-  self.clients.matchAll({ type: "window" }).then(clients => {
-    clients.forEach(client => {
-      client.postMessage({ type: "SW_UPDATED" });
-    });
-  });
 });
 
 /* =========================
@@ -99,38 +119,58 @@ self.addEventListener("activate", () => {
 self.addEventListener("push", event => {
   if (!event.data) return;
 
-  const data = event.data.json();
+  let data;
+  try {
+    data = event.data.json();
+  } catch {
+    return;
+  }
+
+  const title = data.title || "Nowa oferta";
 
   event.waitUntil(
-    self.registration.showNotification(data.title || "Nowa oferta", {
+    self.registration.showNotification(title, {
       body: data.body || "",
-      icon: "/icons/icon-192.png",
-      badge: "/icons/badge.png",
-      data
+      icon: data.icon || "/icons/icon-192.png",
+      badge: data.badge || "/icons/badge.png",
+      image: data.image || undefined,
+      data, // 🔥 PRZENOSIMY CAŁE PAYLOAD
     })
   );
 });
 
 /* =========================
-   👉 CLICK
+   👉 NOTIFICATION CLICK
    ========================= */
 self.addEventListener("notificationclick", event => {
   event.notification.close();
 
   const { match_key, app_url } = event.notification.data || {};
-  const url = `${app_url || "/"}?match_key=${encodeURIComponent(match_key || "")}`;
+  const base = app_url || "/";
+  const url =
+    match_key
+      ? `${base}?match_key=${encodeURIComponent(match_key)}`
+      : base;
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true })
-      .then(list => {
-        for (const c of list) {
-          if (c.url.startsWith(app_url)) {
-            c.focus();
-            c.postMessage({ fromPush: true, match_key });
-            return;
-          }
+    (async () => {
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      for (const client of clients) {
+        if (client.url.startsWith(base)) {
+          await client.focus();
+          client.postMessage({
+            fromPush: true,
+            match_key,
+          });
+          return;
         }
-        return clients.openWindow(url);
-      })
+      }
+
+      await self.clients.openWindow(url);
+    })()
   );
 });
