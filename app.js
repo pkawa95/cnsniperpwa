@@ -272,7 +272,7 @@ function renderSettingsNumbers() {
 });
 
 // 🔥 SYNC DO BACKENDU
-syncHighlightNumbersToBackend();
+syncHighlightNumbersDebounced();
 
 
       if (info) {
@@ -852,4 +852,13 @@ async function bootAppAfterLogin() {
   connectWS();
   connectHealthWS();
   loadStatsDashboard();
+}
+
+let highlightSyncTimer = null;
+
+function syncHighlightNumbersDebounced() {
+  clearTimeout(highlightSyncTimer);
+  highlightSyncTimer = setTimeout(() => {
+    syncHighlightNumbersToBackend();
+  }, 300);
 }
