@@ -769,10 +769,6 @@ if (id === "rejectedView") {
   document.addEventListener('gesturechange', e => e.preventDefault());
   document.addEventListener('gestureend', e => e.preventDefault());
 
-
-
-const PUSH_ENABLED_KEY = "cn_push_enabled";
-
 async function handleEnablePush() {
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
@@ -795,24 +791,6 @@ async function handleEnablePush() {
   await updatePushButtonFromBrowser();
 }
 
-function updatePushButton(enabled) {
-  const btn = document.getElementById("pushBtn");
-  const status = document.getElementById("pushStatus");
-
-  if (!btn) return;
-
-  if (enabled) {
-    btn.textContent = "🔕 Wyłącz powiadomienia";
-    btn.style.background =
-      "linear-gradient(135deg, #ff4d6d, #ffb347)";
-    if (status) status.textContent = "Powiadomienia włączone ✅";
-  } else {
-    btn.textContent = "🔔 Włącz powiadomienia";
-    btn.style.background =
-      "linear-gradient(135deg, #4fdfff, #ff4fd8)";
-    if (status) status.textContent = "Powiadomienia wyłączone";
-  }
-}
 
 async function updatePushButtonFromBrowser() {
   const btn = document.getElementById("pushBtn");
@@ -835,4 +813,5 @@ async function updatePushButtonFromBrowser() {
     if (status) status.textContent = "Powiadomienia wyłączone";
   }
 }
+
 
