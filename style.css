@@ -826,34 +826,3 @@ body::before {
   box-shadow: 0 0 40px rgba(255, 79, 216, 0.4);
 }
 
-/* =========================
-   🚫 IGNORE SAFE AREA (NOTCH)
-   ========================= */
-
-/* globalnie ignorujemy safe-area */
-:root {
-  --ignore-safe-top: 0px;
-  --ignore-safe-bottom: 0px;
-}
-
-/* TOPBAR od samej krawędzi */
-.topbar {
-  top: 0;
-  padding-top: 0;
-  height: 130px;
-}
-
-/* CONTENT od samej góry */
-main {
-  top: 0;
-}
-
-/* BODY bez kompensacji */
-body {
-  padding-top: 0;
-}
-
-/* (opcjonalnie) usuń wszystkie safe-area wpływy */
-* {
-  margin-top: 0;
-}
