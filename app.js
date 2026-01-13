@@ -8,60 +8,68 @@ const WS_API = API.replace(/^http/, "ws");
 /* =========================
    🌐 API FETCH (AUTH-AWARE)
    ========================= */
+let refreshPromise = null;
+
 async function apiFetch(url, options = {}) {
   const access = localStorage.getItem("access_token");
   const refresh = localStorage.getItem("refresh_token");
 
-  const headers = {
-    ...(options.headers || {}),
-    "Content-Type": "application/json",
-  };
+  const headers = { ...(options.headers || {}) };
 
   if (access) {
     headers.Authorization = `Bearer ${access}`;
   }
 
-  let res = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  // 🔁 ACCESS TOKEN WYGASŁ
-  if (res.status === 401 && refresh) {
-    console.warn("🔄 access expired → try refresh");
-
-    const r = await fetch(`${API}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refresh }),
-    });
-
-    if (!r.ok) {
-      forceLogout("refresh_failed", "Sesja wygasła – zaloguj się ponownie");
-      throw new Error("Refresh failed");
-    }
-
-    const tokens = await r.json();
-
-    localStorage.setItem("access_token", tokens.access_token);
-    localStorage.setItem("refresh_token", tokens.refresh_token);
-
-    // 🔁 ponów request
-    headers.Authorization = `Bearer ${tokens.access_token}`;
-
-    res = await fetch(url, {
-      ...options,
-      headers,
-    });
+  if (!headers["Content-Type"] && options.body) {
+    headers["Content-Type"] = "application/json";
   }
 
-  // 🚫 KONTO ZDEZAKTYWOWANE / ZABLOKOWANE
+  let res = await fetch(url, { ...options, headers });
+
+  // 🚫 konto zdezaktywowane
   if (res.status === 403) {
     forceLogout(
       "account_disabled",
-      "Administrator musi aktywować twoje konto, spróbuj ponownie później"
+      "Administrator musi aktywować twoje konto"
     );
     throw new Error("Account disabled");
+  }
+
+  // 🔁 access expired
+  if (res.status === 401 && refresh) {
+    if (!refreshPromise) {
+      refreshPromise = (async () => {
+        const r = await fetch(`${API}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: refresh }),
+        });
+
+        if (r.status === 403) {
+          forceLogout(
+            "account_disabled",
+            "Administrator musi aktywować twoje konto"
+          );
+          throw new Error("Account disabled");
+        }
+
+        if (!r.ok) {
+          forceLogout("refresh_failed", "Sesja wygasła");
+          throw new Error("Refresh failed");
+        }
+
+        const tokens = await r.json();
+        localStorage.setItem("access_token", tokens.access_token);
+        localStorage.setItem("refresh_token", tokens.refresh_token);
+        return tokens.access_token;
+      })().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    const newAccess = await refreshPromise;
+    headers.Authorization = `Bearer ${newAccess}`;
+    res = await fetch(url, { ...options, headers });
   }
 
   return res;
@@ -1018,24 +1026,48 @@ function updateHighlightServerStatus(state, message) {
   }
 }
 
+let authWS = null;
+
 function connectAuthWS() {
   const token = localStorage.getItem("access_token");
   if (!token) return;
 
-  const ws = new WebSocket(`wss://api.cnsniper.pl/ws/auth-status?token=${token}`);
-  window.__authWS = ws;
+  if (authWS) return; // 🔒 tylko jedno połączenie
 
-  ws.onopen = () => console.log("🟢 AUTH WS connected");
-  ws.onerror = (e) => console.error("🔴 AUTH WS error", e);
-  ws.onclose = () => console.warn("🟠 AUTH WS closed");
+  authWS = new WebSocket(
+    `wss://api.cnsniper.pl/ws/auth-status?token=${token}`
+  );
 
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    console.log("🔐 AUTH WS:", msg);
+  authWS.onopen = () => {
+    console.log("🟢 AUTH WS connected");
+  };
 
-    if (msg.type === "auth" && msg.action === "logout") {
-      forceLogout(msg.reason, msg.message || "Wylogowano");
+  authWS.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      console.log("🔐 AUTH WS:", msg);
+
+      if (msg.type === "auth" && msg.action === "logout") {
+        forceLogout(
+          msg.reason || "account_disabled",
+          msg.message || "Konto dezaktywowane"
+        );
+      }
+    } catch {}
+  };
+
+  authWS.onclose = () => {
+    console.warn("🟠 AUTH WS closed");
+    authWS = null;
+
+    // 🔁 reconnect TYLKO jeśli nadal zalogowany
+    if (localStorage.getItem("access_token")) {
+      setTimeout(connectAuthWS, 2000);
     }
+  };
+
+  authWS.onerror = () => {
+    authWS?.close();
   };
 }
 
@@ -1104,62 +1136,173 @@ window.addEventListener("auth:logout", (e) => {
   socket = null;
 });
 
-// =========================
-// 📊 STATS VIEW
-// =========================
-function showStatsView(tab = "global") {
-  console.log("📊 showStatsView:", tab);
+let STATS = null;
+let CURRENT_VIEW = "global";
 
-  // przełącz widok
-  showView("statsView");
-
-  // podświetl taby
-  document.querySelectorAll("#statsView .stats-tab")
-    .forEach(btn => {
-      btn.classList.toggle(
-        "active",
-        btn.dataset.stats === tab
-      );
-    });
-
-  // załaduj dane
-  loadStatsDashboard(tab);
-}
-
-// =========================
-// 📊 LOAD STATS
-// =========================
-async function loadStatsDashboard(tab = "global") {
-  console.log("📊 loadStatsDashboard:", tab);
-
+async function loadStats() {
   try {
     const res = await apiFetch(`${API}/stats`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const data = await res.json();
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`HTTP ${res.status}: ${t}`);
+    }
 
-    renderStats(tab, data);
+    STATS = await res.json();
+    console.log("📊 STATS OK:", STATS);
+    renderStats();
 
-  } catch (e) {
-    console.error("❌ Stats load error:", e);
+  } catch (err) {
+    console.error("❌ STATS LOAD ERROR:", err);
+    const box = document.getElementById("statsDashboard");
+    if (box) {
+      box.innerHTML =
+        "<b style='color:red'>❌ Nie udało się załadować statystyk</b>";
+    }
   }
 }
 
-// =========================
-// 📊 LOAD STATS
-// =========================
-async function loadStatsDashboard(tab = "global") {
-  console.log("📊 loadStatsDashboard:", tab);
 
-  try {
-    const res = await apiFetch(`${API}/stats`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+document.addEventListener("DOMContentLoaded", loadStats);
 
-    const data = await res.json();
 
-    renderStats(tab, data);
 
-  } catch (e) {
-    console.error("❌ Stats load error:", e);
+function showStatsView(view) {
+  CURRENT_VIEW = view;
+
+  document.querySelectorAll(".stats-tab").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.view === view);
+  });
+
+  renderStats();
+}
+
+function renderStats() {
+  if (!STATS) return;
+
+  let html = "";
+
+  if (CURRENT_VIEW === "global") {
+    html = renderGlobal(STATS.global);
   }
+
+  if (CURRENT_VIEW === "today") {
+    html = renderToday(STATS.today);
+  }
+
+  if (CURRENT_VIEW === "weekly") {
+    html = renderWeekly(STATS.weekly);
+  }
+
+  document.getElementById("statsDashboard").innerHTML = html;
+}
+
+/* =========================
+   🔧 RENDERERS (CSS READY)
+========================= */
+
+function renderGlobal(g) {
+  return `
+    <div class="stats-grid">
+      ${statCard("⏱ Uptime", formatTime(g.uptime_sec), "blue")}
+      ${statCard("🔁 Scany", g.scans, "cyan")}
+      ${statCard("🆕 Nowe", g.totals.new, "green")}
+      ${statCard("🗑 Junk", g.totals.junk, "red")}
+      ${statCard("🔄 Zmiany", g.totals.change, "orange")}
+      ${statCard("🚨 Gigantosy", g.totals.gigantos, "pink")}
+    </div>
+
+    <h3>📦 Źródła</h3>
+    ${renderSources(g.per_source)}
+  `;
+}
+
+function renderToday(t) {
+  return `
+    <div class="stats-grid">
+      ${statCard("🔁 Scany", t.scans, "cyan")}
+      ${statCard("🆕 Nowe", t.new, "green")}
+      ${statCard("🗑 Junk", t.junk, "red")}
+      ${statCard("🔄 Zmiany", t.change, "orange")}
+      ${statCard("🚨 Gigantosy", t.gigantos, "pink")}
+    </div>
+
+    <h3>📦 Źródła</h3>
+    ${renderSources(t.per_source)}
+  `;
+}
+
+function renderWeekly(w) {
+  return `
+    <h3>➡️ Aktualny tydzień</h3>
+
+    <div class="stats-grid">
+      ${statCard("🔁 Scany", w.current.scans, "cyan", w.compare.scans)}
+      ${statCard("🆕 Nowe", w.current.new, "green", w.compare.new)}
+      ${statCard("🗑 Junk", w.current.junk, "red", w.compare.junk)}
+      ${statCard("🔄 Zmiany", w.current.change, "orange", w.compare.change)}
+      ${statCard("🚨 Gigantosy", w.current.gigantos, "pink", w.compare.gigantos)}
+    </div>
+  `;
+}
+
+/* =========================
+   🧩 COMPONENTS
+========================= */
+
+function statCard(title, value, color, delta = null) {
+  let deltaHtml = "";
+
+  if (delta && typeof delta.abs === "number") {
+    const cls = delta.abs >= 0 ? "up" : "down";
+    const sign = delta.abs > 0 ? "+" : "";
+    deltaHtml = `
+      <div class="delta ${cls}">
+        ${sign}${delta.abs}${delta.pct !== null ? ` (${delta.pct}%)` : ""}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="stat-card ${color}">
+      <div class="stat-title">${title}</div>
+      <div class="stat-value">${value}</div>
+      ${deltaHtml}
+    </div>
+  `;
+}
+
+/* =========================
+   📦 SOURCES (BARS)
+========================= */
+
+function renderSources(s) {
+  const total = Object.values(s).reduce((a, b) => a + b, 0) || 1;
+
+  return `
+    <div class="bars">
+      ${Object.entries(s).map(([name, val]) => {
+        const pct = Math.round((val / total) * 100);
+        return `
+          <div class="bar">
+            <strong>${name.toUpperCase()}</strong>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%"></div>
+            </div>
+            <span>${val}</span>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+/* =========================
+   ⏱ HELPERS
+========================= */
+
+function formatTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return `${h}h ${m}m`;
 }
