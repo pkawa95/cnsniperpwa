@@ -1,6 +1,8 @@
 // ===============================
-// AUTH.JS V2 – CN SNIPER
+// AUTH.JS V2 – CN SNIPER (FINAL)
 // ===============================
+
+console.log("✅ auth.js loaded");
 
 const API_BASE = "https://api.cnsniper.pl";
 
@@ -8,29 +10,29 @@ const API_BASE = "https://api.cnsniper.pl";
 // TOKEN HELPERS
 // ===============================
 
-function getAccessToken() {
+window.getAccessToken = function () {
   return localStorage.getItem("access_token");
-}
+};
 
-function getRefreshToken() {
+window.getRefreshToken = function () {
   return localStorage.getItem("refresh_token");
-}
+};
 
-function setTokens(access, refresh) {
+window.setTokens = function (access, refresh) {
   localStorage.setItem("access_token", access);
   localStorage.setItem("refresh_token", refresh);
-}
+};
 
-function clearTokens() {
+window.clearTokens = function () {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
-}
+};
 
 // ===============================
 // JWT
 // ===============================
 
-function isJwtExpired(token) {
+window.isJwtExpired = function (token) {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     const now = Math.floor(Date.now() / 1000);
@@ -38,66 +40,57 @@ function isJwtExpired(token) {
   } catch {
     return true;
   }
-}
+};
 
 // ===============================
 // OVERLAY
 // ===============================
 
-function showAuthOverlay() {
-  document.getElementById("loginOverlayV2")?.classList.remove("hidden");
-  showLoginV2();
-}
+window.showAuthOverlay = function () {
+  const o = document.getElementById("loginOverlayV2");
+  if (!o) {
+    console.error("❌ loginOverlayV2 NOT FOUND");
+    return;
+  }
 
-function hideAuthOverlay() {
-  document.getElementById("loginOverlayV2")?.classList.add("hidden");
-}
+  o.classList.remove("hidden");
+  o.style.display = "flex";
+  o.style.position = "fixed";
+  o.style.inset = "0";
+  o.style.zIndex = "99999";
+
+  window.showLoginV2();
+};
+
+window.hideAuthOverlay = function () {
+  const o = document.getElementById("loginOverlayV2");
+  if (!o) return;
+  o.classList.add("hidden");
+};
 
 // ===============================
-// TAB SWITCH
+// TAB SWITCH (GLOBAL)
 // ===============================
 
-function showLoginV2() {
+window.showLoginV2 = function () {
   document.getElementById("loginFormV2")?.classList.remove("hidden");
   document.getElementById("registerFormV2")?.classList.add("hidden");
   document.getElementById("btnLoginTab")?.classList.add("active");
   document.getElementById("btnRegisterTab")?.classList.remove("active");
-}
+};
 
-function showRegisterV2() {
+window.showRegisterV2 = function () {
   document.getElementById("loginFormV2")?.classList.add("hidden");
   document.getElementById("registerFormV2")?.classList.remove("hidden");
   document.getElementById("btnLoginTab")?.classList.remove("active");
   document.getElementById("btnRegisterTab")?.classList.add("active");
-}
-
-// ===============================
-// SESSION CHECK
-// ===============================
-
-function checkAuthSession() {
-  const access = getAccessToken();
-  const refresh = getRefreshToken();
-
-  if (!access || !refresh) {
-    showAuthOverlay();
-    return;
-  }
-
-  if (isJwtExpired(access)) {
-    console.warn("🔒 Access token expired");
-    showAuthOverlay();
-    return;
-  }
-
-  hideAuthOverlay();
-}
+};
 
 // ===============================
 // LOGIN
 // ===============================
 
-async function handleLoginV2() {
+window.handleLoginV2 = async function () {
   const login = document.getElementById("loginV2_login")?.value.trim();
   const password = document.getElementById("loginV2_password")?.value;
   const errorBox = document.getElementById("loginV2_error");
@@ -113,7 +106,7 @@ async function handleLoginV2() {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ login, password })
+      body: JSON.stringify({ login, password }),
     });
 
     const data = await res.json();
@@ -123,42 +116,78 @@ async function handleLoginV2() {
       return;
     }
 
-    setTokens(data.access_token, data.refresh_token);
-    hideAuthOverlay();
+    window.setTokens(data.access_token, data.refresh_token);
+    window.hideAuthOverlay();
 
-    console.log("✅ Zalogowano");
+    console.log("✅ ZALOGOWANO");
+
+    // opcjonalnie:
+    location.reload();
 
   } catch (e) {
+    console.error(e);
     errorBox.textContent = "Brak połączenia z serwerem";
   }
-}
+};
 
 // ===============================
-// LOGOUT (BONUS)
+// LOGOUT
 // ===============================
 
-function handleLogoutV2() {
-  clearTokens();
-  showAuthOverlay();
+window.handleLogoutV2 = function () {
+  window.clearTokens();
+  window.showAuthOverlay();
   console.log("🚪 Wylogowano");
-}
+};
 
 // ===============================
-// AUTO INIT
+// SESSION CHECK (BOOT)
 // ===============================
 
-document.addEventListener("DOMContentLoaded", () => {
-  checkAuthSession();
-});
+window.checkAuthSession = function () {
+  const access = window.getAccessToken();
+  const refresh = window.getRefreshToken();
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🔐 Auth init");
+  console.log("🔍 access:", access);
+  console.log("🔍 refresh:", refresh);
 
-  const overlay = document.getElementById("loginOverlayV2");
-  if (!overlay) {
-    console.error("❌ loginOverlayV2 NOT FOUND");
+  if (!access || !refresh) {
+    console.log("🚨 NO SESSION");
+    window.showAuthOverlay();
     return;
   }
 
-  checkAuthSession();
-});
+  if (window.isJwtExpired(access)) {
+    console.warn("⏰ Access token expired");
+    window.showAuthOverlay();
+    return;
+  }
+
+  console.log("✅ SESSION OK");
+  window.hideAuthOverlay();
+};
+
+// ===============================
+// FINAL BOOTSTRAP (NIEZAWODNY)
+// ===============================
+
+(function authBootstrapFinal() {
+  console.log("🔥 AUTH BOOTSTRAP FINAL");
+
+  function boot() {
+    const overlay = document.getElementById("loginOverlayV2");
+
+    if (!overlay) {
+      console.error("❌ loginOverlayV2 NOT FOUND");
+      return;
+    }
+
+    window.checkAuthSession();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    setTimeout(boot, 0);
+  }
+})();

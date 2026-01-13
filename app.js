@@ -4,6 +4,33 @@
 const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
 const WS_API = API.replace(/^http/, "ws");
+// ===============================
+// 🔐 AUTH HARD GUARD (BLOCK APP)
+// ===============================
+
+(function authHardGuard() {
+  const access = localStorage.getItem("access_token");
+  const refresh = localStorage.getItem("refresh_token");
+
+  console.log("🛡️ AUTH HARD GUARD", { access, refresh });
+
+  if (!access || !refresh) {
+    console.warn("⛔ NO SESSION → BLOCKING APP START");
+
+    // pokaż overlay
+    const overlay = document.getElementById("loginOverlayV2");
+    if (overlay) {
+      overlay.classList.remove("hidden");
+      overlay.style.display = "flex";
+      overlay.style.position = "fixed";
+      overlay.style.inset = "0";
+      overlay.style.zIndex = "99999";
+    }
+
+    // 🔥 ZATRZYMAJ RESZTĘ APPKI
+    throw new Error("APP BLOCKED – NOT AUTHENTICATED");
+  }
+})();
 
 // 🔄 SERVICE WORKER UPDATE HANDLER
 navigator.serviceWorker?.addEventListener("message", event => {
@@ -25,6 +52,7 @@ function syncHighlightNumbersDebounced() {
     syncHighlightNumbersToBackend();
   }, 300);
 }
+
 
 /* 🚀 start aplikacji po zalogowaniu */
 /* =========================
@@ -473,6 +501,22 @@ function readPushFromURL() {
     applyFilters();
   }
 }
+
+/* =========================
+   🔄 INIT
+   ========================= */
+document.addEventListener("DOMContentLoaded", () => {
+  settings = loadSettings();
+
+  if (isLoggedIn()) {
+    hideLogin();
+    bootAppAfterLogin();
+    bindFilterEvents(); // 🔥🔥🔥 TO JEST KLUCZ
+    readPushFromURL();
+  } else {
+    showLogin();
+  }
+});
 
 
 /* =========================
