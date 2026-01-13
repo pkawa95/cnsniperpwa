@@ -7,7 +7,23 @@ const WS_API = API.replace(/^http/, "ws");
 // ===============================
 // 🔐 AUTH HARD GUARD (BLOCK APP)
 // ===============================
+// ===============================
+// 🔐 AUTH HARD STOP (REAL)
+// ===============================
+const __ACCESS = localStorage.getItem("access_token");
+const __REFRESH = localStorage.getItem("refresh_token");
 
+if (!__ACCESS || !__REFRESH) {
+  console.warn("⛔ APP.JS BLOCKED – NO AUTH");
+
+  // NIE URUCHAMIAJ RESZTY PLIKU
+  // ale NIE RZUCAJ throw (żeby auth.js się wykonał)
+  window.__APP_BLOCKED__ = true;
+}
+
+// ===============================
+// 🔐 AUTH HARD GUARD (SAFE VERSION)
+// ===============================
 (function authHardGuard() {
   const access = localStorage.getItem("access_token");
   const refresh = localStorage.getItem("refresh_token");
@@ -15,9 +31,8 @@ const WS_API = API.replace(/^http/, "ws");
   console.log("🛡️ AUTH HARD GUARD", { access, refresh });
 
   if (!access || !refresh) {
-    console.warn("⛔ NO SESSION → BLOCKING APP START");
+    console.warn("⛔ NO SESSION → SHOW AUTH OVERLAY");
 
-    // pokaż overlay
     const overlay = document.getElementById("loginOverlayV2");
     if (overlay) {
       overlay.classList.remove("hidden");
@@ -27,10 +42,13 @@ const WS_API = API.replace(/^http/, "ws");
       overlay.style.zIndex = "99999";
     }
 
-    // 🔥 ZATRZYMAJ RESZTĘ APPKI
-    throw new Error("APP BLOCKED – NOT AUTHENTICATED");
+    // ❗ NIE BLOKUJEMY JS — tylko UI
+    return;
   }
+
+  console.log("✅ SESSION OK – APP MAY CONTINUE");
 })();
+
 
 // 🔄 SERVICE WORKER UPDATE HANDLER
 navigator.serviceWorker?.addEventListener("message", event => {
