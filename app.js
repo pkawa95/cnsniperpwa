@@ -969,3 +969,48 @@ function updateHighlightServerStatus(state, message) {
     text.textContent = message;
   }
 }
+
+async function apiFetch(url, options = {}) {
+  const access = localStorage.getItem("access_token");
+
+  const headers = {
+    ...(options.headers || {}),
+    Authorization: access ? `Bearer ${access}` : "",
+  };
+
+  const res = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  // 🚨 KONTO ZDEZAKTYWOWANE
+  if (res.status === 403) {
+    let data = {};
+    try { data = await res.json(); } catch {}
+
+    if (data.detail === "ACCOUNT_DISABLED") {
+      console.warn("⛔ Konto dezaktywowane – logout");
+
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+
+      showAuthOverlay();
+      showLoginV2();
+
+      document.getElementById("loginV2_error").textContent =
+        "⛔ Konto zostało dezaktywowane przez administratora";
+
+      throw new Error("ACCOUNT_DISABLED");
+    }
+  }
+
+  // standardowe 401
+  if (res.status === 401) {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    showAuthOverlay();
+    throw new Error("UNAUTHORIZED");
+  }
+
+  return res;
+}
