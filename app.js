@@ -4,6 +4,69 @@
 const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
 const WS_API = API.replace(/^http/, "ws");
+
+/* =========================
+   🌐 API FETCH (AUTH-AWARE)
+   ========================= */
+async function apiFetch(url, options = {}) {
+  const access = localStorage.getItem("access_token");
+  const refresh = localStorage.getItem("refresh_token");
+
+  const headers = {
+    ...(options.headers || {}),
+    "Content-Type": "application/json",
+  };
+
+  if (access) {
+    headers.Authorization = `Bearer ${access}`;
+  }
+
+  let res = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  // 🔁 ACCESS TOKEN WYGASŁ
+  if (res.status === 401 && refresh) {
+    console.warn("🔄 access expired → try refresh");
+
+    const r = await fetch(`${API}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+
+    if (!r.ok) {
+      forceLogout("refresh_failed", "Sesja wygasła – zaloguj się ponownie");
+      throw new Error("Refresh failed");
+    }
+
+    const tokens = await r.json();
+
+    localStorage.setItem("access_token", tokens.access_token);
+    localStorage.setItem("refresh_token", tokens.refresh_token);
+
+    // 🔁 ponów request
+    headers.Authorization = `Bearer ${tokens.access_token}`;
+
+    res = await fetch(url, {
+      ...options,
+      headers,
+    });
+  }
+
+  // 🚫 KONTO ZDEZAKTYWOWANE / ZABLOKOWANE
+  if (res.status === 403) {
+    forceLogout(
+      "account_disabled",
+      "Administrator musi aktywować twoje konto, spróbuj ponownie później"
+    );
+    throw new Error("Account disabled");
+  }
+
+  return res;
+}
+
 // ===============================
 // 🔐 AUTH HARD GUARD (BLOCK APP)
 // ===============================
@@ -70,6 +133,7 @@ function syncHighlightNumbersDebounced() {
     syncHighlightNumbersToBackend();
   }, 300);
 }
+
 
 
 /* 🚀 start aplikacji po zalogowaniu */
@@ -906,22 +970,6 @@ function sendHighlightState() {
 }
 
 
-function sendHighlightState() {
-  if (!highlightWS || highlightWS.readyState !== 1) return;
-
-  console.log(
-    "📤 highlight_state →",
-    settings.highlightNumbers
-  );
-
-  highlightWS.send(JSON.stringify({
-    type: "highlight_state",
-    numbers: settings.highlightNumbers,
-  }));
-}
-
-
-
 let highlightWS = null;
 
 function connectHighlightWS() {
@@ -970,47 +1018,148 @@ function updateHighlightServerStatus(state, message) {
   }
 }
 
-async function apiFetch(url, options = {}) {
-  const access = localStorage.getItem("access_token");
+function connectAuthWS() {
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
 
-  const headers = {
-    ...(options.headers || {}),
-    Authorization: access ? `Bearer ${access}` : "",
-  };
+  const ws = new WebSocket(`wss://api.cnsniper.pl/ws/auth-status?token=${token}`);
+  window.__authWS = ws;
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
+  ws.onopen = () => console.log("🟢 AUTH WS connected");
+  ws.onerror = (e) => console.error("🔴 AUTH WS error", e);
+  ws.onclose = () => console.warn("🟠 AUTH WS closed");
 
-  // 🚨 KONTO ZDEZAKTYWOWANE
-  if (res.status === 403) {
-    let data = {};
-    try { data = await res.json(); } catch {}
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    console.log("🔐 AUTH WS:", msg);
 
-    if (data.detail === "ACCOUNT_DISABLED") {
-      console.warn("⛔ Konto dezaktywowane – logout");
-
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-
-      showAuthOverlay();
-      showLoginV2();
-
-      document.getElementById("loginV2_error").textContent =
-        "⛔ Konto zostało dezaktywowane przez administratora";
-
-      throw new Error("ACCOUNT_DISABLED");
+    if (msg.type === "auth" && msg.action === "logout") {
+      forceLogout(msg.reason, msg.message || "Wylogowano");
     }
+  };
+}
+
+
+function forceLogout(reason = "session_invalid", message = "") {
+  console.warn("🚨 FORCE LOGOUT:", reason, message);
+
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+
+  // pozamykaj WS z appki jeśli istnieją
+  try { window.__authWS?.close(); } catch {}
+  window.__authWS = null;
+
+  try { window.__offersWS?.close(); } catch {}
+  window.__offersWS = null;
+
+  // pokaż overlay logowania
+  showAuthOverlay();
+
+  // info dla UI
+  const box = document.getElementById("loginV2_error");
+  if (box && message) box.textContent = message;
+
+  // powiadom app.js
+  window.dispatchEvent(new CustomEvent("auth:logout", {
+    detail: { reason, message }
+  }));
+}
+
+// =========================
+// ✅ APP INIT (EVENT-DRIVEN)
+// =========================
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 app.js DOMContentLoaded");
+
+  // bindy filtrów mogą być zawsze
+  bindFilterEvents();
+  readPushFromURL();
+
+  // jeśli już jest token (np. refresh strony)
+  if (localStorage.getItem("access_token") && localStorage.getItem("refresh_token")) {
+    console.log("✅ session present → boot app");
+    bootAppAfterLogin();
+    connectAuthWS();   // <-- start auth realtime
+    return;
   }
 
-  // standardowe 401
-  if (res.status === 401) {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    showAuthOverlay();
-    throw new Error("UNAUTHORIZED");
-  }
+  // jeśli nie ma tokenów, auth.js pokaże overlay
+  console.log("⛔ no session → waiting for login");
+});
 
-  return res;
+// po udanym loginie z auth.js
+window.addEventListener("auth:login", () => {
+  console.log("✅ auth:login event → boot app");
+  bootAppAfterLogin();
+  connectAuthWS();
+});
+
+// po logout
+window.addEventListener("auth:logout", (e) => {
+  console.warn("🧼 auth:logout event", e.detail);
+
+  // zatrzymaj wszystko co realtime
+  try { socket?.close(); } catch {}
+  socket = null;
+});
+
+// =========================
+// 📊 STATS VIEW
+// =========================
+function showStatsView(tab = "global") {
+  console.log("📊 showStatsView:", tab);
+
+  // przełącz widok
+  showView("statsView");
+
+  // podświetl taby
+  document.querySelectorAll("#statsView .stats-tab")
+    .forEach(btn => {
+      btn.classList.toggle(
+        "active",
+        btn.dataset.stats === tab
+      );
+    });
+
+  // załaduj dane
+  loadStatsDashboard(tab);
+}
+
+// =========================
+// 📊 LOAD STATS
+// =========================
+async function loadStatsDashboard(tab = "global") {
+  console.log("📊 loadStatsDashboard:", tab);
+
+  try {
+    const res = await apiFetch(`${API}/stats`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    renderStats(tab, data);
+
+  } catch (e) {
+    console.error("❌ Stats load error:", e);
+  }
+}
+
+// =========================
+// 📊 LOAD STATS
+// =========================
+async function loadStatsDashboard(tab = "global") {
+  console.log("📊 loadStatsDashboard:", tab);
+
+  try {
+    const res = await apiFetch(`${API}/stats`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    renderStats(tab, data);
+
+  } catch (e) {
+    console.error("❌ Stats load error:", e);
+  }
 }
