@@ -26,66 +26,6 @@ function syncHighlightNumbersDebounced() {
   }, 300);
 }
 
-/* =========================
-   🔐 AUTH (PWA – ONE TIME LOGIN)
-   ========================= */
-
-const AUTH_TOKEN_KEY = "cn_auth_token";
-
-/* 🔍 sprawdzenie czy już zalogowany */
-function isLoggedIn() {
-  return Boolean(localStorage.getItem(AUTH_TOKEN_KEY));
-}
-
-/* 🔓 pokaż / ukryj login */
-function showLogin() {
-  document.getElementById("loginOverlay")?.classList.remove("hidden");
-}
-
-function hideLogin() {
-  document.getElementById("loginOverlay")?.classList.add("hidden");
-}
-
-/* 🚪 login */
-async function handleLogin() {
-  const user = document.getElementById("loginUser").value.trim();
-  const pass = document.getElementById("loginPass").value;
-  const err = document.getElementById("loginError");
-
-  err.textContent = "";
-
-  try {
-    const res = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: user, password: pass }),
-    });
-
-    if (!res.ok) throw new Error("Błędny login lub hasło");
-
-    const data = await res.json();
-    localStorage.setItem(AUTH_TOKEN_KEY, data.token);
-
-    hideLogin();
-    bootAppAfterLogin();
-
-  } catch (e) {
-    err.textContent = "❌ Nieprawidłowy login lub hasło";
-  }
-}
-
-async function apiFetch(url, options = {}) {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
-
-  return fetch(url, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${token}`,
-    },
-  });
-}
-
 /* 🚀 start aplikacji po zalogowaniu */
 /* =========================
    🔔 PUSH MATCHING (SINGLE SOURCE OF TRUTH)
