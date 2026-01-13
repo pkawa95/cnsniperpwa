@@ -474,22 +474,6 @@ function readPushFromURL() {
   }
 }
 
-/* =========================
-   🔄 INIT
-   ========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  settings = loadSettings();
-
-  if (isLoggedIn()) {
-    hideLogin();
-    bootAppAfterLogin();
-    bindFilterEvents(); // 🔥🔥🔥 TO JEST KLUCZ
-    readPushFromURL();
-  } else {
-    showLogin();
-  }
-});
-
 
 /* =========================
    ❤️ HEALTH WS
