@@ -150,3 +150,15 @@ function handleLogoutV2() {
 document.addEventListener("DOMContentLoaded", () => {
   checkAuthSession();
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🔐 Auth init");
+
+  const overlay = document.getElementById("loginOverlayV2");
+  if (!overlay) {
+    console.error("❌ loginOverlayV2 NOT FOUND");
+    return;
+  }
+
+  checkAuthSession();
+});
