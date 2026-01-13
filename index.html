@@ -45,30 +45,40 @@
 
 
 <body>
-<!-- 🔒 LOGIN OVERLAY -->
-<div id="loginOverlay" class="login-overlay hidden">
-  <div class="login-box">
+<!-- 🔐 AUTH OVERLAY V2 -->
+<div id="loginOverlayV2" class="auth-overlay hidden">
+  <div class="auth-box">
+
     <h1>🔐 CN Sniper</h1>
 
-    <input
-      id="loginUser"
-      type="text"
-      placeholder="Login"
-      autocomplete="username"
-    />
+    <!-- 🔁 SWITCH -->
+    <div class="auth-switch">
+      <button id="btnLoginTab" class="active" onclick="showLoginV2()">Zaloguj</button>
+      <button id="btnRegisterTab" onclick="showRegisterV2()">Zarejestruj</button>
+    </div>
 
-    <input
-      id="loginPass"
-      type="password"
-      placeholder="Hasło"
-      autocomplete="current-password"
-    />
+    <!-- 🔑 LOGIN FORM -->
+    <div id="loginFormV2" class="auth-form">
+      <input id="loginV2_login" type="text" placeholder="Login lub email" />
+      <input id="loginV2_password" type="password" placeholder="Hasło" />
+      <button onclick="handleLoginV2()">Zaloguj</button>
+      <p id="loginV2_error" class="auth-error"></p>
+    </div>
 
-    <button onclick="handleLogin()">Zaloguj</button>
+    <!-- 🆕 REGISTER FORM -->
+    <div id="registerFormV2" class="auth-form hidden">
+      <input id="regV2_username" type="text" placeholder="Username" />
+      <input id="regV2_email" type="email" placeholder="Email" />
+      <input id="regV2_firstname" type="text" placeholder="Imię" />
+      <input id="regV2_lastname" type="text" placeholder="Nazwisko" />
+      <input id="regV2_password" type="password" placeholder="Hasło" />
+      <button onclick="handleRegisterV2()">Zarejestruj</button>
+      <p id="regV2_error" class="auth-error"></p>
+    </div>
 
-    <p id="loginError" class="login-error"></p>
   </div>
 </div>
+
 
   <!-- 🔝 HEADER -->
   <header class="topbar">
@@ -237,6 +247,9 @@
   <script src="app.js"></script>
   <script src="stats.js"></script>
   <script src="subscribe.js"></script>
+  <script src="auth.js"></script>
+  <script src="register.js"></script>
+
 
   <!-- SERVICE WORKER -->
   <script>
