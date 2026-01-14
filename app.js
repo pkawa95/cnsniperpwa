@@ -866,7 +866,8 @@ async function handleEnablePush() {
     try {
       console.log("🔕 disabling push");
 
-      const res = await apiFetch(`${API}/push/unsubscribe`, {
+      const res = await apiFetch(`${API}/api/push/unsubscribe`
+, {
         method: "POST",
         body: JSON.stringify({ endpoint: "all" }),
       });
@@ -1406,7 +1407,7 @@ async function subscribeForPush() {
     console.log("📦 SUB OBJECT:", sub);
 
     // 3️⃣ WYŚLIJ DO BACKENDU — TYLKO apiFetch ❗
-    const res = await apiFetch(`${API}/push/subscribe`, {
+    const res = await apiFetch(`${API}/api/push/subscribe`, {
       method: "POST",
       body: JSON.stringify(sub),
     });
