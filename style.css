@@ -1197,17 +1197,9 @@ body::before {
   font-size: 0.85rem;
   color: #ff4d6d;
 }
-
-/* =========================
-   🛡️ ADMIN PANEL
-   ========================= */
-
-.hidden {
-  display: none !important;
-}
-
-.admin-panel {
-  margin-top: 24px;
+.admin-panel.hidden,
+#adminSep.hidden {
+  display: none;
 }
 
 .admin-users {
@@ -1221,29 +1213,94 @@ body::before {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
-
   padding: 14px;
   border-radius: 14px;
-  background: linear-gradient(
-    135deg,
-    rgba(255,79,216,0.15),
-    rgba(79,223,255,0.15)
-  );
+  background: rgba(255,255,255,0.05);
+}
+
+.admin-user-info b {
+  color: var(--blue);
 }
 
 .admin-toggle button {
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: none;
   font-weight: 900;
   cursor: pointer;
-  min-width: 120px;
 }
 
-.admin-toggle button.active {
-  background: linear-gradient(135deg,#2ecc71,#00ff9c);
+.admin-toggle .active {
+  background: #ff4d6d;
 }
 
-.admin-toggle button.inactive {
-  background: linear-gradient(135deg,#ff4d6d,#ff9f9f);
+.admin-toggle .inactive {
+  background: #2ecc71;
+}
+
+/* =========================
+   ⚙️ SETTINGS VIEW HEADER
+   ========================= */
+
+#settingsView {
+  position: relative; /* ⬅️ KLUCZ */
+}
+
+/* nagłówek */
+#settingsView > h2 {
+  margin: 0;
+  padding-right: 160px; /* miejsce na przycisk */
+}
+
+/* =========================
+   ⚙️ SETTINGS VIEW HEADER
+   ========================= */
+
+#settingsView {
+  position: relative; /* ⬅️ KLUCZ */
+}
+
+/* nagłówek */
+#settingsView > h2 {
+  margin: 0;
+  padding-right: 160px; /* miejsce na przycisk */
+}
+
+/* =========================
+   🚪 LOGOUT BUTTON
+   ========================= */
+
+.logout-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin-top : 10px;
+  margin-right: 20px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+
+  font-weight: 900;
+  font-size: 0.85em;
+  letter-spacing: 0.3px;
+
+  color: #000;
+  background: linear-gradient(
+    135deg,
+    #ff4d6d,
+    #ffb347
+  );
+
+  box-shadow: 0 0 14px rgba(255, 120, 120, 0.6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.logout-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 22px rgba(255, 140, 140, 0.9);
+}
+
+.logout-btn:active {
+  transform: scale(0.97);
 }

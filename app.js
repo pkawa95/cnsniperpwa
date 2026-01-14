@@ -1476,7 +1476,6 @@ async function subscribeForPush() {
     return false;
   }
 }
-
 /* =========================
    🛡️ ADMIN PANEL – FINAL
    ========================= */
@@ -1505,12 +1504,13 @@ async function loadAdminPanel() {
   const box = document.getElementById("adminUsers");
   const status = document.getElementById("adminStatus");
 
-  if (!panel || !box) return;
+  if (!panel || !box || !sep) return;
 
   // 🔒 domyślnie WSZYSTKO ukryte
   panel.classList.add("hidden");
   sep.classList.add("hidden");
   box.innerHTML = "";
+  if (status) status.textContent = "";
 
   try {
     const res = await adminFetch(`${ADMIN_API_BASE}/users`);
@@ -1532,10 +1532,10 @@ async function loadAdminPanel() {
     }
 
     for (const u of users) {
+      const isActive = Boolean(u.active);
+
       const row = document.createElement("div");
       row.className = "admin-user";
-
-      const isActive = Boolean(u.active);
 
       row.innerHTML = `
         <div class="admin-user-info">
@@ -1591,20 +1591,6 @@ async function toggleUserActive(userId, active) {
 }
 
 
-async function isAdmin() {
-  try {
-    const res = await adminFetch(`${ADMIN_API_BASE}/users`);
-    return res.ok; // 200 = admin, 403 = nie admin
-  } catch {
-    return false;
-  }
-}
-
-window.addEventListener(
-  "wheel",
-  () => console.log("🟢 WHEEL EVENT"),
-  { passive: true }
-);
 
 /* =========================
    🛠 FORCE ENABLE MOUSE WHEEL
@@ -1629,3 +1615,34 @@ window.addEventListener("wheel", e => {
 
   main.scrollTop += e.deltaY;
 }, { passive: true });
+
+/* =========================
+   🚪 LOGOUT
+   ========================= */
+
+async function handleLogout() {
+  const refresh = localStorage.getItem("refresh_token");
+
+  if (!refresh) {
+    forceLogout("manual", "Wylogowano");
+    return;
+  }
+
+  if (!confirm("Czy na pewno chcesz się wylogować?")) {
+    return;
+  }
+
+  try {
+    await apiFetch(`${API}/auth/logout`, {
+      method: "POST",
+      body: JSON.stringify({
+        refresh_token: refresh,
+      }),
+    });
+  } catch (e) {
+    console.warn("⚠️ logout backend error:", e);
+  }
+
+  // 🔥 HARD LOGOUT FRONTEND
+  forceLogout("manual", "Wylogowano");
+}

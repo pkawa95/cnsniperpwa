@@ -179,8 +179,13 @@
 
     <!-- ⚙️ SETTINGS -->
 <section id="settingsView" class="view">
-  <h2>Ustawienia</h2>
+    <h2>Ustawienia</h2>
 
+  <button id="logoutBtn" class="logout-btn" onclick="handleLogout()">
+    🚪 Wyloguj
+  </button>
+</div>
+  
   <!-- ⏱ INTERWAŁ -->
   <div class="interval-box">
     <input
@@ -223,19 +228,21 @@
   <p id="pushStatus" class="muted"></p>
 
   <!-- 🛡️ ADMIN PANEL (TYLKO ADMIN) -->
-  <div id="adminPanel" class="admin-panel hidden">
-    <hr class="sep" />
-    <h3>🛡️ Panel administracyjny</h3>
-    <p class="muted">Aktywacja kont użytkowników</p>
+<hr id="adminSep" class="sep hidden" />
 
-    <div id="adminUsers" class="admin-users"></div>
-    <p id="adminStatus" class="muted"></p>
-  </div>
+<div id="adminPanel" class="admin-panel hidden">
+  <h3>🛡️ Panel administracyjny</h3>
+  <p class="muted">Aktywacja i dezaktywacja kont użytkowników</p>
+
+  <div id="adminUsers" class="admin-users"></div>
+  <p id="adminStatus" class="muted"></p>
+</div>
+
 </section>
 
   </main>
 <footer class="app-footer">
-  © Copyright by <b>PiotrFlix</b> 2026 v 2.0.0
+  © Copyright by <b>PiotrFlix</b> 2026 v 2.1.5
 </footer>
 
   <!-- 🔻 BOTTOM NAV -->
