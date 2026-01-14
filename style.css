@@ -1269,3 +1269,10 @@ body::before {
   color: black;
   box-shadow: 0 0 14px rgba(255,80,80,.6);
 }
+
+.admin-fixed {
+  position: fixed;
+  inset: 80px 16px 90px 16px;
+  z-index: 5000;
+  overflow-y: auto;
+}

@@ -1001,6 +1001,7 @@ async function bootAppAfterLogin() {
   connectHealthWS();
   loadStatsDashboard();
   loadAdminPanel();
+  
 }
 
 
@@ -1476,35 +1477,77 @@ async function subscribeForPush() {
 }
 
 /* =========================
-   🛡️ ADMIN PANEL LOGIC
+   🛡️ ADMIN PANEL LOGIC – HARD /admin
    ========================= */
 
+const ADMIN_API_BASE = "https://api.cnsniper.pl/admin";
+
+function getAccessToken() {
+  return localStorage.getItem("access_token");
+}
+
+async function adminFetch(url, options = {}) {
+  const token = getAccessToken();
+
+  if (!token) {
+    throw new Error("NO_ACCESS_TOKEN");
+  }
+
+  return fetch(url, {
+    method: options.method || "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: options.body || null,
+    cache: "no-store",
+    credentials: "omit",
+  });
+}
+
 async function loadAdminPanel() {
+  console.log("🛡️ loadAdminPanel() FORCE SHOW");
+
   const panel = document.getElementById("adminPanel");
   const box = document.getElementById("adminUsers");
   const status = document.getElementById("adminStatus");
 
-  if (!panel || !box) return;
+  if (!panel || !box) {
+    console.warn("🛡️ adminPanel DOM not found");
+    return;
+  }
 
   try {
-    const res = await apiFetch(`${API}/api/admin/users`);
+    const res = await adminFetch(`${ADMIN_API_BASE}/users`);
+    console.log("🛡️ admin users status:", res.status);
 
     if (res.status === 403) {
-      // ❌ nie admin → panel niewidoczny
-      panel.classList.add("hidden");
+      console.warn("⛔ NOT ADMIN – hiding panel");
+      panel.style.display = "none";
       return;
     }
 
     if (!res.ok) {
-      throw new Error("Admin fetch failed");
+      throw new Error(`HTTP ${res.status}`);
     }
 
     const users = await res.json();
+    console.log("🛡️ ADMIN USERS DATA:", users);
+    forceShowAdminPanel();
 
+    // 🔥🔥🔥 FORCE SHOW – ZERO LITOŚCI
     panel.classList.remove("hidden");
+    showAdminPanelHard();
+    forceShowAdminPanel();
+
+    panel.style.display = "block";
+    panel.style.visibility = "visible";
+    panel.style.height = "auto";
+    panel.style.opacity = "1";
+
     box.innerHTML = "";
 
-    if (!users.length) {
+    if (!Array.isArray(users) || users.length === 0) {
       box.innerHTML = "<p class='muted'>Brak użytkowników</p>";
       return;
     }
@@ -1515,10 +1558,10 @@ async function loadAdminPanel() {
 
       row.innerHTML = `
         <div class="admin-user-info">
-          <b>${u.first_name} ${u.last_name}</b><br>
-          ${u.email}
+          <b>${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)}</b><br>
+          ${escapeHtml(u.email)}
           <div class="admin-user-date">
-            Utworzono: ${u.created_at}
+            Utworzono: ${escapeHtml(u.created_at)}
           </div>
         </div>
 
@@ -1535,16 +1578,29 @@ async function loadAdminPanel() {
       box.appendChild(row);
     }
 
-  } catch (e) {
-    console.error("Admin panel error:", e);
-    if (status) status.textContent = "❌ Błąd ładowania panelu admina";
+  } catch (err) {
+    console.error("❌ Admin panel error:", err);
+    if (status) {
+      status.textContent = "❌ Błąd ładowania panelu admina";
+    }
   }
 }
 
+
 async function toggleUserActive(userId, active) {
+  if (!confirm(
+    active
+      ? "Czy AKTYWOWAĆ to konto?"
+      : "Czy DEZAKTYWOWAĆ to konto?"
+  )) {
+    return;
+  }
+
   try {
-    const res = await apiFetch(
-      `${API}/api/admin/users/${userId}/activate`,
+    console.log("🛡️ toggleUserActive", { userId, active });
+
+    const res = await adminFetch(
+      `${ADMIN_API_BASE}/users/${userId}/activate`,
       {
         method: "POST",
         body: JSON.stringify({ active }),
@@ -1552,13 +1608,95 @@ async function toggleUserActive(userId, active) {
     );
 
     if (!res.ok) {
-      throw new Error("Toggle failed");
+      const t = await res.text();
+      throw new Error(t);
     }
 
-    // 🔄 przeładuj listę
-    loadAdminPanel();
+    await loadAdminPanel();
 
-  } catch (e) {
+  } catch (err) {
+    console.error("❌ toggle error:", err);
     alert("Nie udało się zmienić statusu użytkownika");
   }
+}
+
+function forceShowAdminPanel() {
+  const panel = document.getElementById("adminPanel");
+  if (!panel) return;
+
+  panel.classList.remove("hidden");
+  panel.style.display = "block";
+  panel.style.visibility = "visible";
+  panel.style.opacity = "1";
+  panel.style.height = "auto";
+
+  console.log("🛡️ ADMIN PANEL FORCED VISIBLE");
+}
+
+new MutationObserver(() => {
+  console.warn("🧨 adminPanel class changed:", adminPanel.className);
+}).observe(adminPanel, { attributes: true });
+
+function showAdminPanelHard() {
+  console.log("🛡️ SHOW ADMIN PANEL HARD");
+
+  // 🔥 WYMUSZ SETTINGS VIEW
+  document.querySelectorAll(".view").forEach(v =>
+    v.classList.remove("active")
+  );
+
+  const settings = document.getElementById("settingsView");
+  if (settings) {
+    settings.classList.add("active");
+  }
+
+  // 🔥 POKAŻ PANEL
+  const panel = document.getElementById("adminPanel");
+  if (panel) {
+    panel.classList.remove("hidden");
+    panel.style.display = "block";
+  }
+
+  console.log("✅ ADMIN PANEL SHOULD BE VISIBLE NOW");
+}
+
+function forceShowAdminPanel() {
+  console.log("🛡️ FORCE SHOW ADMIN PANEL");
+
+  // 1️⃣ aktywuj settings view
+  document.querySelectorAll(".view").forEach(v =>
+    v.classList.remove("active")
+  );
+
+  const settings = document.getElementById("settingsView");
+  if (!settings) {
+    console.error("❌ settingsView not found");
+    return;
+  }
+
+  settings.classList.add("active");
+
+  // 2️⃣ pokaż panel
+  const panel = document.getElementById("adminPanel");
+  if (!panel) {
+    console.error("❌ adminPanel not found");
+    return;
+  }
+
+  panel.classList.remove("hidden");
+
+  // 3️⃣ HARD FIX — WYMUŚ STYL
+  panel.style.display = "block";
+  panel.style.visibility = "visible";
+  panel.style.opacity = "1";
+
+  // 4️⃣ 🔥 NAJWAŻNIEJSZE — SCROLL DO PANELU
+  setTimeout(() => {
+    panel.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }, 50);
+
+  console.log("✅ ADMIN PANEL FORCED & SCROLLED");
 }
