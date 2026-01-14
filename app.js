@@ -1478,57 +1478,53 @@ async function subscribeForPush() {
 }
 
 /* =========================
-   🛡️ ADMIN PANEL LOGIC – HARD /admin
+   🛡️ ADMIN PANEL – FINAL
    ========================= */
 
 const ADMIN_API_BASE = "https://api.cnsniper.pl/admin";
 
-function getAccessToken() {
-  return localStorage.getItem("access_token");
-}
-
+/* ---------- fetch z tokenem ---------- */
 async function adminFetch(url, options = {}) {
-  const token = getAccessToken();
-
-  if (!token) {
-    throw new Error("NO_ACCESS_TOKEN");
-  }
+  const token = localStorage.getItem("access_token");
+  if (!token) throw new Error("NO_TOKEN");
 
   return fetch(url, {
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
     body: options.body || null,
-    cache: "no-store",
-    credentials: "omit",
   });
 }
 
+/* ---------- główna funkcja ---------- */
 async function loadAdminPanel() {
   const panel = document.getElementById("adminPanel");
+  const sep = document.getElementById("adminSep");
   const box = document.getElementById("adminUsers");
   const status = document.getElementById("adminStatus");
 
   if (!panel || !box) return;
 
+  // 🔒 domyślnie WSZYSTKO ukryte
+  panel.classList.add("hidden");
+  sep.classList.add("hidden");
+  box.innerHTML = "";
+
   try {
     const res = await adminFetch(`${ADMIN_API_BASE}/users`);
 
-    // ❌ nie admin → chowamy panel
-    if (res.status === 403) {
-      panel.classList.add("hidden");
-      return;
-    }
+    // ❌ NIE ADMIN → NIC NIE POKAZUJEMY
+    if (res.status === 403) return;
 
     if (!res.ok) throw new Error(res.status);
 
+    // ✅ ADMIN
     const users = await res.json();
 
-    // ✅ admin → pokaż panel
     panel.classList.remove("hidden");
-    box.innerHTML = "";
+    sep.classList.remove("hidden");
 
     if (!users.length) {
       box.innerHTML = "<p class='muted'>Brak użytkowników</p>";
@@ -1539,6 +1535,8 @@ async function loadAdminPanel() {
       const row = document.createElement("div");
       row.className = "admin-user";
 
+      const isActive = Boolean(u.active);
+
       row.innerHTML = `
         <div class="admin-user-info">
           <b>${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)}</b><br>
@@ -1547,10 +1545,10 @@ async function loadAdminPanel() {
 
         <div class="admin-toggle">
           <button
-            class="${u.active ? "active" : "inactive"}"
-            onclick="toggleUserActive(${u.id}, ${!u.active})"
+            class="${isActive ? "active" : "inactive"}"
+            onclick="toggleUserActive(${u.id}, ${!isActive})"
           >
-            ${u.active ? "AKTYWNY" : "NIEAKTYWNY"}
+            ${isActive ? "DEZAKTYWUJ" : "AKTYWUJ"}
           </button>
         </div>
       `;
@@ -1558,100 +1556,40 @@ async function loadAdminPanel() {
       box.appendChild(row);
     }
 
-  } catch (e) {
-    console.error("Admin panel error:", e);
-    panel.classList.add("hidden");
+  } catch (err) {
+    console.error("❌ Admin panel error:", err);
     if (status) status.textContent = "❌ Błąd panelu admina";
   }
 }
 
-
+/* ---------- aktywuj / dezaktywuj ---------- */
 async function toggleUserActive(userId, active) {
-  if (!confirm(active ? "Aktywować konto?" : "Dezaktywować konto?")) return;
+  const msg = active
+    ? "Czy AKTYWOWAĆ konto użytkownika?"
+    : "Czy DEZAKTYWOWAĆ konto użytkownika?";
 
-  await adminFetch(
-    `${ADMIN_API_BASE}/users/${userId}/activate`,
-    {
-      method: "POST",
-      body: JSON.stringify({ active }),
-    }
-  );
-
-  loadAdminPanel();
-}
-
-
-
-
-function showAdminPanel() {
-  const panel = document.getElementById("adminPanel");
-  if (!panel) return;
-
-  panel.classList.remove("hidden");
-  panel.style.display = "flex";
-}
-
-function hideAdminPanel() {
-  const panel = document.getElementById("adminPanel");
-  if (!panel) return;
-
-  panel.classList.add("hidden");
-}
-
-async function loadAdminPanel() {
-  console.log("🛡️ loadAdminPanel (settingsView)");
-
-  const panel = document.getElementById("adminPanel");
-  const box = document.getElementById("adminUsers");
-  const status = document.getElementById("adminStatus");
-
-  if (!panel || !box) return;
+  if (!confirm(msg)) return;
 
   try {
-    const res = await adminFetch(`${ADMIN_API_BASE}/users`);
-
-    if (res.status === 403) {
-      panel.classList.add("hidden");
-      return;
-    }
+    const res = await adminFetch(
+      `${ADMIN_API_BASE}/users/${userId}/activate`,
+      {
+        method: "POST",
+        body: JSON.stringify({ active }),
+      }
+    );
 
     if (!res.ok) throw new Error(res.status);
 
-    const users = await res.json();
+    // 🔄 przeładuj listę
+    loadAdminPanel();
 
-    // ✅ ADMIN → pokaż panel
-    panel.classList.remove("hidden");
-
-    box.innerHTML = "";
-
-    for (const u of users) {
-      const row = document.createElement("div");
-      row.className = "admin-user";
-
-      row.innerHTML = `
-        <div class="admin-user-info">
-          <b>${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)}</b><br>
-          ${escapeHtml(u.email)}
-        </div>
-        <div class="admin-toggle">
-          <button
-            class="${u.active ? "active" : "inactive"}"
-            onclick="toggleUserActive(${u.id}, ${!u.active})"
-          >
-            ${u.active ? "AKTYWNY" : "NIEAKTYWNY"}
-          </button>
-        </div>
-      `;
-
-      box.appendChild(row);
-    }
-
-  } catch (e) {
-    console.error("❌ admin panel error:", e);
-    panel.classList.add("hidden");
-    if (status) status.textContent = "❌ Błąd panelu admina";
+  } catch (err) {
+    console.error("❌ Toggle error:", err);
+    alert("Nie udało się zmienić statusu użytkownika");
   }
 }
+
 
 async function isAdmin() {
   try {
