@@ -157,8 +157,7 @@ let highlightedMatchKey = null;
 function normalizeTitle(title) {
   return String(title ?? "")
     .toLowerCase()
-    .replace(/[^\w\s]/g, "")     // usuwa znaki specjalne
-    .replace(/\s+/g, " ")        // scala spacje
+    .replace(/\s+/g, " ")
     .trim()
     .slice(0, 120);
 }
@@ -849,30 +848,75 @@ function connectRejectedWS(kind) {
 
 
 
+/* =========================
+   🔔 PUSH ENABLE / DISABLE
+   ========================= */
+
 const PUSH_ENABLED_KEY = "cn_push_enabled";
 
+/**
+ * GŁÓWNY HANDLER POD PRZYCISK
+ */
 async function handleEnablePush() {
-  if (localStorage.getItem(PUSH_ENABLED_KEY)) {
-    // 🔕 WYŁĄCZ
-    await fetch(`${API}/push/unsubscribe`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ endpoint: "all" })
-    });
+  const enabled = Boolean(localStorage.getItem(PUSH_ENABLED_KEY));
 
-    localStorage.removeItem(PUSH_ENABLED_KEY);
-    updatePushButton(false);
+  if (enabled) {
+    // =====================
+    // 🔕 WYŁĄCZ PUSH
+    // =====================
+    try {
+      await apiFetch(`${API}/push/unsubscribe`, {
+        method: "POST"
+      });
+
+      localStorage.removeItem(PUSH_ENABLED_KEY);
+      updatePushButton(false);
+
+    } catch (e) {
+      console.error("❌ Push unsubscribe error:", e);
+      alert("Nie udało się wyłączyć powiadomień");
+    }
+
     return;
   }
 
-  // 🔔 WŁĄCZ (Twoja istniejąca logika subscribe)
-  const ok = await subscribeForPush(); // ← masz to już
-  if (ok) {
-    localStorage.setItem(PUSH_ENABLED_KEY, "1");
-    updatePushButton(true);
+  // =====================
+  // 🔔 WŁĄCZ PUSH
+  // =====================
+
+  // 1️⃣ Permission
+  let perm = Notification.permission;
+  if (perm !== "granted") {
+    perm = await Notification.requestPermission();
   }
+
+  if (perm !== "granted") {
+    alert("Musisz zezwolić na powiadomienia, aby je włączyć");
+    return;
+  }
+
+  // 2️⃣ Subscribe (Twoja istniejąca funkcja)
+  let ok = false;
+  try {
+    ok = await subscribeForPush(); // ⬅️ MUSI wołać /push/subscribe przez apiFetch
+  } catch (e) {
+    console.error("❌ Push subscribe error:", e);
+  }
+
+  if (!ok) {
+    alert("Nie udało się włączyć powiadomień");
+    return;
+  }
+
+  // 3️⃣ Zapis lokalny + UI
+  localStorage.setItem(PUSH_ENABLED_KEY, "1");
+  updatePushButton(true);
 }
 
+
+/**
+ * AKTUALIZACJA UI PRZYCISKU
+ */
 function updatePushButton(enabled) {
   const btn = document.getElementById("pushBtn");
   const status = document.getElementById("pushStatus");
@@ -892,11 +936,15 @@ function updatePushButton(enabled) {
   }
 }
 
+
+/**
+ * 🔄 SYNC HIGHLIGHT NUMBERS → BACKEND
+ * (bez zmian, ale zostawiam w komplecie)
+ */
 async function syncHighlightNumbersToBackend() {
   try {
     await apiFetch(`${API}/settings/highlight-numbers`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         numbers: settings.highlightNumbers
       })
@@ -908,7 +956,6 @@ async function syncHighlightNumbersToBackend() {
     updateHighlightServerStatus("error", "Błąd zapisu");
   }
 }
-
 
 
 async function loadHighlightNumbersFromBackend() {
