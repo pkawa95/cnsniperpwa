@@ -866,11 +866,10 @@ async function handleEnablePush() {
     try {
       console.log("🔕 disabling push");
 
-      const res = await apiFetch(`${API}/api/push/unsubscribe`
-, {
-        method: "POST",
-        body: JSON.stringify({ endpoint: "all" }),
-      });
+      const res = await apiFetch(`${API}/api/push/unsubscribe`, {
+  method: "POST",
+  body: JSON.stringify({ endpoint: "all" }),
+});
 
       if (!res.ok) {
         const t = await res.text();
@@ -1408,9 +1407,10 @@ async function subscribeForPush() {
 
     // 3️⃣ WYŚLIJ DO BACKENDU — TYLKO apiFetch ❗
     const res = await apiFetch(`${API}/api/push/subscribe`, {
-      method: "POST",
-      body: JSON.stringify(sub),
-    });
+  method: "POST",
+  body: JSON.stringify(sub),
+});
+
 
     console.log("📡 backend response:", res.status);
 
