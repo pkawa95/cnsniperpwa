@@ -3,11 +3,11 @@
 /* =========================
    🧱 VERSIONING
    ========================= */
-const VERSION = "2.0.5"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
+const VERSION = "2.0.6"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
 const CACHE_NAME = `cnsniper-${VERSION}`;
 
 /* =========================
-   📦 CORE ASSETS
+   📦 CORE ASSETS (STATIC ONLY)
    ========================= */
 const CORE_ASSETS = [
   "/",
@@ -20,15 +20,16 @@ const CORE_ASSETS = [
   "/icons/icon-192.png",
   "/icons/badge.png",
 ];
-self.addEventListener("fetch", event => {
-  const url = new URL(event.request.url);
 
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  event.respondWith(handleFetch(event.request));
-});
+/* =========================
+   🚫 NEVER CACHE / NEVER TOUCH
+   ========================= */
+const NEVER_INTERCEPT = [
+  "/api/",
+  "/auth/",
+  "/push/",
+  "/ws/",
+];
 
 /* =========================
    ⚙️ INSTALL
@@ -37,9 +38,7 @@ self.addEventListener("install", event => {
   self.skipWaiting();
 
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(CORE_ASSETS);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS))
   );
 });
 
@@ -52,19 +51,15 @@ self.addEventListener("activate", event => {
       // 🧹 usuń stare cache
       const keys = await caches.keys();
       await Promise.all(
-        keys
-          .filter(k => k !== CACHE_NAME)
-          .map(k => caches.delete(k))
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       );
 
-      // 🟢 przejmij kontrolę natychmiast
+      // 🟢 przejmij kontrolę
       await self.clients.claim();
 
-      // 🔄 powiadom clienty o update
+      // 🔄 notify clients
       const clients = await self.clients.matchAll({ type: "window" });
-      clients.forEach(c =>
-        c.postMessage({ type: "SW_UPDATED" })
-      );
+      clients.forEach(c => c.postMessage({ type: "SW_UPDATED" }));
     })()
   );
 });
@@ -74,53 +69,54 @@ self.addEventListener("activate", event => {
    ========================= */
 self.addEventListener("fetch", event => {
   const req = event.request;
+  const url = new URL(req.url);
 
-  // ❌ nie cache’ujemy requestów innych niż GET
-  if (req.method !== "GET") {
+  // ❌ NIE DOTYKAMY:
+  // - POST / PUT / DELETE
+  // - API / AUTH / PUSH / WS
+  if (
+    req.method !== "GET" ||
+    NEVER_INTERCEPT.some(p => url.pathname.startsWith(p))
+  ) {
     return;
   }
 
   // 🌍 HTML – NETWORK FIRST
   if (req.mode === "navigate") {
-    event.respondWith(
-      (async () => {
-        try {
-          const res = await fetch(req);
-
-          // 🔥 KLON TYLKO DO CACHE
-          const clone = res.clone();
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(req, clone);
-
-          return res;
-        } catch (err) {
-          const cached = await caches.match(req);
-          return cached || Response.error();
-        }
-      })()
-    );
+    event.respondWith(networkFirst(req));
     return;
   }
 
-  // 📦 ASSETS – CACHE FIRST + UPDATE W TLE
-  event.respondWith(
-    (async () => {
-      const cached = await caches.match(req);
-
-      const fetchPromise = fetch(req)
-        .then(async res => {
-          if (res && res.status === 200) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(req, res.clone());
-          }
-          return res;
-        })
-        .catch(() => cached);
-
-      return cached || fetchPromise;
-    })()
-  );
+  // 📦 ASSETS – CACHE FIRST
+  event.respondWith(cacheFirst(req));
 });
+
+/* =========================
+   📦 CACHE STRATEGIES
+   ========================= */
+async function networkFirst(req) {
+  try {
+    const res = await fetch(req);
+    const cache = await caches.open(CACHE_NAME);
+    cache.put(req, res.clone());
+    return res;
+  } catch {
+    const cached = await caches.match(req);
+    return cached || Response.error();
+  }
+}
+
+async function cacheFirst(req) {
+  const cached = await caches.match(req);
+  if (cached) return cached;
+
+  const res = await fetch(req);
+  if (res && res.status === 200) {
+    const cache = await caches.open(CACHE_NAME);
+    cache.put(req, res.clone());
+  }
+  return res;
+}
 
 /* =========================
    🔔 PUSH
@@ -135,16 +131,17 @@ self.addEventListener("push", event => {
     return;
   }
 
-  const title = data.title || "Nowa oferta";
-
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || "",
-      icon: data.icon || "/icons/icon-192.png",
-      badge: data.badge || "/icons/badge.png",
-      image: data.image || undefined,
-      data, // 🔥 PRZENOSIMY CAŁE PAYLOAD
-    })
+    self.registration.showNotification(
+      data.title || "Nowa oferta",
+      {
+        body: data.body || "",
+        icon: data.icon || "/icons/icon-192.png",
+        badge: data.badge || "/icons/badge.png",
+        image: data.image || undefined,
+        data, // 🔥 pełny payload
+      }
+    )
   );
 });
 
@@ -156,10 +153,9 @@ self.addEventListener("notificationclick", event => {
 
   const { match_key, app_url } = event.notification.data || {};
   const base = app_url || "/";
-  const url =
-    match_key
-      ? `${base}?match_key=${encodeURIComponent(match_key)}`
-      : base;
+  const targetUrl = match_key
+    ? `${base}?match_key=${encodeURIComponent(match_key)}`
+    : base;
 
   event.waitUntil(
     (async () => {
@@ -171,15 +167,12 @@ self.addEventListener("notificationclick", event => {
       for (const client of clients) {
         if (client.url.startsWith(base)) {
           await client.focus();
-          client.postMessage({
-            fromPush: true,
-            match_key,
-          });
+          client.postMessage({ fromPush: true, match_key });
           return;
         }
       }
 
-      await self.clients.openWindow(url);
+      await self.clients.openWindow(targetUrl);
     })()
   );
 });
