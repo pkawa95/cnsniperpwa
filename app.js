@@ -1438,3 +1438,38 @@ function urlBase64ToUint8Array(base64String) {
   const rawData = atob(base64);
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
+
+const VAPID_PUBLIC_KEY =
+  "BLcaMptBg8239UIkJ6CSoRWhNdAXpR_UA1ZF5DP2PZgKmOKlIYuFuVvIAbCs9inWK7KVaNZ-jKb-n7DKB6t3DyE";
+
+async function subscribeForPush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+
+    let sub = await reg.pushManager.getSubscription();
+
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+
+    const res = await apiFetch(
+      "https://api.cnsniper.pl/push/subscribe",
+      {
+        method: "POST",
+        body: JSON.stringify(sub),
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    return true;
+  } catch (e) {
+    console.error("❌ subscribeForPush:", e);
+    return false;
+  }
+}
