@@ -178,66 +178,60 @@
     </section>
 
     <!-- ⚙️ SETTINGS -->
-    <section id="settingsView" class="view">
-      <h2>Ustawienia</h2>
+<section id="settingsView" class="view">
+  <h2>Ustawienia</h2>
 
-      <div class="interval-box">
-  <input
-    type="number"
-    id="intervalInput"
-    min="30"
-    placeholder="Interwał (sek.)"
-  />
+  <!-- ⏱ INTERWAŁ -->
+  <div class="interval-box">
+    <input
+      type="number"
+      id="intervalInput"
+      min="30"
+      placeholder="Interwał (sek.)"
+    />
+    <button class="interval-save" onclick="updateInterval()">
+      💾 Zapisz
+    </button>
+  </div>
 
-  <button class="interval-save" onclick="updateInterval()">
-    💾 Zapisz
+  <p id="intervalStatus" class="muted"></p>
+  <hr class="sep" />
+
+  <!-- 🔢 HIGHLIGHT -->
+  <h3>Wyróżnianie numerów (1–40)</h3>
+  <p class="muted">
+    Zaznacz numery, które mają dawać <b>zieloną ramkę</b>.
+  </p>
+
+  <div id="highlightNumbers" class="numbers-grid"></div>
+  <p id="highlightInfo" class="muted"></p>
+
+  <div id="highlightServerStatus" class="hl-status pending">
+    <span class="dot"></span>
+    <span class="text">Sprawdzanie stanu…</span>
+  </div>
+
+  <hr class="sep" />
+
+  <!-- 🔔 PUSH -->
+  <h3>🔔 Powiadomienia</h3>
+
+  <button id="pushBtn" class="push-btn" onclick="handleEnablePush()">
+    🔔 Włącz powiadomienia
   </button>
-</div>
 
-<p id="intervalStatus" class="muted"></p>
+  <p id="pushStatus" class="muted"></p>
 
-
-      <hr class="sep" />
-
-      <h3>Wyróżnianie numerów (1–40)</h3>
-      <p class="muted">
-        Zaznacz numery, które mają dawać <b>zieloną ramkę</b>, jeśli wystąpią w tytule.
-      </p>
-
-      <div id="highlightNumbers" class="numbers-grid"></div>
-      <p id="highlightInfo" class="muted"></p>
-      <hr class="sep" />
-
-<div id="highlightServerStatus" class="hl-status pending">
-  <span class="dot"></span>
-  <span class="text">Sprawdzanie stanu…</span>
-</div>
-
-      <hr class="sep" />
-
-<h3>🔔 Powiadomienia</h3>
-
-<button
-  id="pushBtn"
-  class="push-btn"
-  onclick="handleEnablePush()"
->
-  🔔 Włącz powiadomienia
-</button>
-
-<p id="pushStatus" class="muted"></p>
-<!-- 🛡️ ADMIN PANEL OVERLAY -->
-<div id="adminPanel" class="admin-panel hidden admin-overlay">
-  <div class="admin-panel-inner">
+  <!-- 🛡️ ADMIN PANEL (TYLKO ADMIN) -->
+  <div id="adminPanel" class="admin-panel hidden">
+    <hr class="sep" />
     <h3>🛡️ Panel administracyjny</h3>
     <p class="muted">Aktywacja kont użytkowników</p>
 
     <div id="adminUsers" class="admin-users"></div>
     <p id="adminStatus" class="muted"></p>
-
-    <button class="admin-close" onclick="hideAdminPanel()">Zamknij</button>
   </div>
-</div>
+</section>
 
   </main>
 <footer class="app-footer">

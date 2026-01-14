@@ -378,7 +378,9 @@ function showView(id) {
   if (id === "foundView") connectWS();
   else disconnectWS();
 
-  if (id === "settingsView") renderSettingsNumbers();
+  if (id === "settingsView") 
+  renderSettingsNumbers();
+  loadAdminPanel();
 }
 
 /* =========================
@@ -1001,7 +1003,6 @@ async function bootAppAfterLogin() {
   connectHealthWS();
   loadStatsDashboard();
   loadAdminPanel();
-  
 }
 
 
@@ -1506,47 +1507,30 @@ async function adminFetch(url, options = {}) {
 }
 
 async function loadAdminPanel() {
-  console.log("🛡️ loadAdminPanel() FORCE SHOW");
-
   const panel = document.getElementById("adminPanel");
   const box = document.getElementById("adminUsers");
   const status = document.getElementById("adminStatus");
 
-  if (!panel || !box) {
-    console.warn("🛡️ adminPanel DOM not found");
-    return;
-  }
+  if (!panel || !box) return;
 
   try {
     const res = await adminFetch(`${ADMIN_API_BASE}/users`);
-    console.log("🛡️ admin users status:", res.status);
 
+    // ❌ nie admin → chowamy panel
     if (res.status === 403) {
-      console.warn("⛔ NOT ADMIN – hiding panel");
-      panel.style.display = "none";
+      panel.classList.add("hidden");
       return;
     }
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(res.status);
 
     const users = await res.json();
-    console.log("🛡️ ADMIN USERS DATA:", users);
 
-    // 🔥🔥🔥 FORCE SHOW – ZERO LITOŚCI
+    // ✅ admin → pokaż panel
     panel.classList.remove("hidden");
-    showAdminPanelHard();
-
-
-    panel.style.display = "block";
-    panel.style.visibility = "visible";
-    panel.style.height = "auto";
-    panel.style.opacity = "1";
-
     box.innerHTML = "";
 
-    if (!Array.isArray(users) || users.length === 0) {
+    if (!users.length) {
       box.innerHTML = "<p class='muted'>Brak użytkowników</p>";
       return;
     }
@@ -1559,9 +1543,6 @@ async function loadAdminPanel() {
         <div class="admin-user-info">
           <b>${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)}</b><br>
           ${escapeHtml(u.email)}
-          <div class="admin-user-date">
-            Utworzono: ${escapeHtml(u.created_at)}
-          </div>
         </div>
 
         <div class="admin-toggle">
@@ -1577,47 +1558,28 @@ async function loadAdminPanel() {
       box.appendChild(row);
     }
 
-  } catch (err) {
-    console.error("❌ Admin panel error:", err);
-    if (status) {
-      status.textContent = "❌ Błąd ładowania panelu admina";
-    }
+  } catch (e) {
+    console.error("Admin panel error:", e);
+    panel.classList.add("hidden");
+    if (status) status.textContent = "❌ Błąd panelu admina";
   }
 }
 
 
 async function toggleUserActive(userId, active) {
-  if (!confirm(
-    active
-      ? "Czy AKTYWOWAĆ to konto?"
-      : "Czy DEZAKTYWOWAĆ to konto?"
-  )) {
-    return;
-  }
+  if (!confirm(active ? "Aktywować konto?" : "Dezaktywować konto?")) return;
 
-  try {
-    console.log("🛡️ toggleUserActive", { userId, active });
-
-    const res = await adminFetch(
-      `${ADMIN_API_BASE}/users/${userId}/activate`,
-      {
-        method: "POST",
-        body: JSON.stringify({ active }),
-      }
-    );
-
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(t);
+  await adminFetch(
+    `${ADMIN_API_BASE}/users/${userId}/activate`,
+    {
+      method: "POST",
+      body: JSON.stringify({ active }),
     }
+  );
 
-    await loadAdminPanel();
-
-  } catch (err) {
-    console.error("❌ toggle error:", err);
-    alert("Nie udało się zmienić statusu użytkownika");
-  }
+  loadAdminPanel();
 }
+
 
 
 
@@ -1637,21 +1599,28 @@ function hideAdminPanel() {
 }
 
 async function loadAdminPanel() {
-  console.log("🛡️ loadAdminPanel OVERLAY");
+  console.log("🛡️ loadAdminPanel (settingsView)");
 
+  const panel = document.getElementById("adminPanel");
   const box = document.getElementById("adminUsers");
   const status = document.getElementById("adminStatus");
+
+  if (!panel || !box) return;
 
   try {
     const res = await adminFetch(`${ADMIN_API_BASE}/users`);
 
     if (res.status === 403) {
-      console.warn("⛔ not admin");
+      panel.classList.add("hidden");
       return;
     }
 
+    if (!res.ok) throw new Error(res.status);
+
     const users = await res.json();
-    showAdminPanel();
+
+    // ✅ ADMIN → pokaż panel
+    panel.classList.remove("hidden");
 
     box.innerHTML = "";
 
@@ -1663,9 +1632,6 @@ async function loadAdminPanel() {
         <div class="admin-user-info">
           <b>${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)}</b><br>
           ${escapeHtml(u.email)}
-          <div class="admin-user-date">
-            Utworzono: ${escapeHtml(u.created_at)}
-          </div>
         </div>
         <div class="admin-toggle">
           <button
@@ -1681,7 +1647,18 @@ async function loadAdminPanel() {
     }
 
   } catch (e) {
-    console.error(e);
+    console.error("❌ admin panel error:", e);
+    panel.classList.add("hidden");
     if (status) status.textContent = "❌ Błąd panelu admina";
   }
 }
+
+async function isAdmin() {
+  try {
+    const res = await adminFetch(`${ADMIN_API_BASE}/users`);
+    return res.ok; // 200 = admin, 403 = nie admin
+  } catch {
+    return false;
+  }
+}
+
