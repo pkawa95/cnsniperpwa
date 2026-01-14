@@ -1662,3 +1662,32 @@ async function isAdmin() {
   }
 }
 
+window.addEventListener(
+  "wheel",
+  () => console.log("🟢 WHEEL EVENT"),
+  { passive: true }
+);
+
+/* =========================
+   🛠 FORCE ENABLE MOUSE WHEEL
+   ========================= */
+window.addEventListener(
+  "wheel",
+  () => {},
+  { passive: true }
+);
+
+document.addEventListener("wheel", e => {
+  if (e.ctrlKey) e.preventDefault(); // tylko zoom
+}, { passive: false });
+
+/* =========================
+   🛠 FORWARD WHEEL TO MAIN
+   ========================= */
+const main = document.querySelector("main");
+
+window.addEventListener("wheel", e => {
+  if (!main) return;
+
+  main.scrollTop += e.deltaY;
+}, { passive: true });
