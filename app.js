@@ -854,63 +854,77 @@ function connectRejectedWS(kind) {
 
 const PUSH_ENABLED_KEY = "cn_push_enabled";
 
-/**
- * GŁÓWNY HANDLER POD PRZYCISK
- */
 async function handleEnablePush() {
+  console.log("🟡 handleEnablePush()");
+
   const enabled = Boolean(localStorage.getItem(PUSH_ENABLED_KEY));
 
+  // =========================
+  // 🔕 WYŁĄCZ PUSH
+  // =========================
   if (enabled) {
-    // =====================
-    // 🔕 WYŁĄCZ PUSH
-    // =====================
     try {
-      await apiFetch(`${API}/push/unsubscribe`, {
-        method: "POST"
+      console.log("🔕 disabling push");
+
+      const res = await apiFetch(`${API}/push/unsubscribe`, {
+        method: "POST",
+        body: JSON.stringify({ endpoint: "all" }),
       });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t);
+      }
 
       localStorage.removeItem(PUSH_ENABLED_KEY);
       updatePushButton(false);
 
-    } catch (e) {
-      console.error("❌ Push unsubscribe error:", e);
+      console.log("✅ push disabled");
+      return;
+
+    } catch (err) {
+      console.error("❌ disable push error:", err);
       alert("Nie udało się wyłączyć powiadomień");
+      return;
+    }
+  }
+
+  // =========================
+  // 🔔 WŁĄCZ PUSH
+  // =========================
+  try {
+    console.log("🔔 enabling push");
+
+    // 1️⃣ Permission
+    let perm = Notification.permission;
+    if (perm !== "granted") {
+      perm = await Notification.requestPermission();
     }
 
-    return;
+    console.log("🔐 Notification permission:", perm);
+
+    if (perm !== "granted") {
+      alert("Musisz zezwolić na powiadomienia");
+      return;
+    }
+
+    // 2️⃣ Subscribe
+    const ok = await subscribeForPush();
+    if (!ok) {
+      alert("Nie udało się włączyć powiadomień");
+      return;
+    }
+
+    // 3️⃣ Local + UI
+    localStorage.setItem(PUSH_ENABLED_KEY, "1");
+    updatePushButton(true);
+
+    console.log("✅ push enabled");
+
+  } catch (err) {
+    console.error("❌ enable push fatal:", err);
+    alert("Błąd podczas włączania powiadomień");
   }
-
-  // =====================
-  // 🔔 WŁĄCZ PUSH
-  // =====================
-
-  // 1️⃣ Permission
-  let perm = Notification.permission;
-  if (perm !== "granted") {
-    perm = await Notification.requestPermission();
-  }
-
-  if (perm !== "granted") {
-    alert("Musisz zezwolić na powiadomienia, aby je włączyć");
-    return;
-  }
-
-  // 2️⃣ Subscribe (Twoja istniejąca funkcja)
-  let ok = false;
-  try {
-    ok = await subscribeForPush(); // ⬅️ MUSI wołać /push/subscribe przez apiFetch
-  } catch (e) {
-    console.error("❌ Push subscribe error:", e);
-  }
-
-  if (!ok) {
-    alert("Nie udało się włączyć powiadomień");
-    return;
-  }
-
-  // 3️⃣ Zapis lokalny + UI
-  localStorage.setItem(PUSH_ENABLED_KEY, "1");
-  updatePushButton(true);
 }
 
 
@@ -935,6 +949,7 @@ function updatePushButton(enabled) {
     if (status) status.textContent = "Powiadomienia wyłączone";
   }
 }
+
 
 
 /**
@@ -1356,52 +1371,55 @@ function formatTime(sec) {
 
 async function subscribeForPush() {
   try {
-    console.log("🔔 subscribeForPush() start");
+    console.log("🚀 subscribeForPush() start");
 
     if (!("serviceWorker" in navigator)) {
-      console.error("❌ No Service Worker support");
+      console.error("❌ ServiceWorker not supported");
       return false;
     }
 
     if (!("PushManager" in window)) {
-      console.error("❌ No PushManager support");
+      console.error("❌ PushManager not supported");
       return false;
     }
 
-    // 1️⃣ czekamy aż SW będzie READY
+    // 1️⃣ Czekamy aż SW będzie GOTOWY
     const reg = await navigator.serviceWorker.ready;
-    console.log("✅ SW ready", reg);
+    console.log("✅ SW ready");
 
-    // 2️⃣ sprawdzamy czy już istnieje sub
+    // 2️⃣ Pobierz / utwórz subskrypcję
     let sub = await reg.pushManager.getSubscription();
+
     if (!sub) {
-      console.log("📥 creating new push subscription");
+      console.log("📥 creating new subscription");
 
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: urlBase64ToUint8Array(
+          window.VAPID_PUBLIC_KEY
+        ),
       });
     } else {
-      console.log("♻️ using existing subscription");
+      console.log("♻️ existing subscription reused");
     }
 
-    console.log("📦 PUSH SUB:", sub);
+    console.log("📦 SUB OBJECT:", sub);
 
-    // 3️⃣ WYSYŁKA DO BACKENDU — UWAGA: apiFetch ❗
+    // 3️⃣ WYŚLIJ DO BACKENDU — TYLKO apiFetch ❗
     const res = await apiFetch(`${API}/push/subscribe`, {
       method: "POST",
       body: JSON.stringify(sub),
     });
 
-    console.log("📡 push subscribe response:", res.status);
+    console.log("📡 backend response:", res.status);
 
     if (!res.ok) {
-      const txt = await res.text();
-      console.error("❌ Backend error:", txt);
+      const t = await res.text();
+      console.error("❌ backend rejected:", t);
       return false;
     }
 
-    console.log("✅ push subscribed OK");
+    console.log("✅ subscribeForPush OK");
     return true;
 
   } catch (err) {
@@ -1410,3 +1428,12 @@ async function subscribeForPush() {
   }
 }
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
