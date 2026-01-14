@@ -1353,3 +1353,59 @@ function formatTime(sec) {
   const m = Math.floor((sec % 3600) / 60);
   return `${h}h ${m}m`;
 }
+
+async function subscribeForPush() {
+  try {
+    console.log("🔔 subscribeForPush() start");
+
+    if (!("serviceWorker" in navigator)) {
+      console.error("❌ No Service Worker support");
+      return false;
+    }
+
+    if (!("PushManager" in window)) {
+      console.error("❌ No PushManager support");
+      return false;
+    }
+
+    // 1️⃣ czekamy aż SW będzie READY
+    const reg = await navigator.serviceWorker.ready;
+    console.log("✅ SW ready", reg);
+
+    // 2️⃣ sprawdzamy czy już istnieje sub
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      console.log("📥 creating new push subscription");
+
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    } else {
+      console.log("♻️ using existing subscription");
+    }
+
+    console.log("📦 PUSH SUB:", sub);
+
+    // 3️⃣ WYSYŁKA DO BACKENDU — UWAGA: apiFetch ❗
+    const res = await apiFetch(`${API}/push/subscribe`, {
+      method: "POST",
+      body: JSON.stringify(sub),
+    });
+
+    console.log("📡 push subscribe response:", res.status);
+
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error("❌ Backend error:", txt);
+      return false;
+    }
+
+    console.log("✅ push subscribed OK");
+    return true;
+
+  } catch (err) {
+    console.error("❌ subscribeForPush exception:", err);
+    return false;
+  }
+}
