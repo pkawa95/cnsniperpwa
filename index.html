@@ -226,6 +226,19 @@
 </button>
 
 <p id="pushStatus" class="muted"></p>
+<!-- 🛡️ ADMIN PANEL OVERLAY -->
+<div id="adminPanel" class="admin-panel hidden admin-overlay">
+  <div class="admin-panel-inner">
+    <h3>🛡️ Panel administracyjny</h3>
+    <p class="muted">Aktywacja kont użytkowników</p>
+
+    <div id="adminUsers" class="admin-users"></div>
+    <p id="adminStatus" class="muted"></p>
+
+    <button class="admin-close" onclick="hideAdminPanel()">Zamknij</button>
+  </div>
+</div>
+
   </main>
 <footer class="app-footer">
   © Copyright by <b>PiotrFlix</b> 2026 v 2.0.0
@@ -269,18 +282,6 @@
     lastTouchEnd = now;
   }, { passive: false });
   </script>
-<!-- 🛡️ ADMIN PANEL OVERLAY -->
-<div id="adminPanel" class="admin-panel hidden admin-overlay">
-  <div class="admin-panel-inner">
-    <h3>🛡️ Panel administracyjny</h3>
-    <p class="muted">Aktywacja kont użytkowników</p>
-
-    <div id="adminUsers" class="admin-users"></div>
-    <p id="adminStatus" class="muted"></p>
-
-    <button class="admin-close" onclick="hideAdminPanel()">Zamknij</button>
-  </div>
-</div>
 
 </body>
 </html>

@@ -1533,12 +1533,11 @@ async function loadAdminPanel() {
 
     const users = await res.json();
     console.log("🛡️ ADMIN USERS DATA:", users);
-    forceShowAdminPanel();
 
     // 🔥🔥🔥 FORCE SHOW – ZERO LITOŚCI
     panel.classList.remove("hidden");
     showAdminPanelHard();
-    forceShowAdminPanel();
+
 
     panel.style.display = "block";
     panel.style.visibility = "visible";
@@ -1620,83 +1619,69 @@ async function toggleUserActive(userId, active) {
   }
 }
 
-function forceShowAdminPanel() {
+
+
+function showAdminPanel() {
   const panel = document.getElementById("adminPanel");
   if (!panel) return;
 
   panel.classList.remove("hidden");
-  panel.style.display = "block";
-  panel.style.visibility = "visible";
-  panel.style.opacity = "1";
-  panel.style.height = "auto";
-
-  console.log("🛡️ ADMIN PANEL FORCED VISIBLE");
+  panel.style.display = "flex";
 }
 
-new MutationObserver(() => {
-  console.warn("🧨 adminPanel class changed:", adminPanel.className);
-}).observe(adminPanel, { attributes: true });
-
-function showAdminPanelHard() {
-  console.log("🛡️ SHOW ADMIN PANEL HARD");
-
-  // 🔥 WYMUSZ SETTINGS VIEW
-  document.querySelectorAll(".view").forEach(v =>
-    v.classList.remove("active")
-  );
-
-  const settings = document.getElementById("settingsView");
-  if (settings) {
-    settings.classList.add("active");
-  }
-
-  // 🔥 POKAŻ PANEL
+function hideAdminPanel() {
   const panel = document.getElementById("adminPanel");
-  if (panel) {
-    panel.classList.remove("hidden");
-    panel.style.display = "block";
-  }
+  if (!panel) return;
 
-  console.log("✅ ADMIN PANEL SHOULD BE VISIBLE NOW");
+  panel.classList.add("hidden");
 }
 
-function forceShowAdminPanel() {
-  console.log("🛡️ FORCE SHOW ADMIN PANEL");
+async function loadAdminPanel() {
+  console.log("🛡️ loadAdminPanel OVERLAY");
 
-  // 1️⃣ aktywuj settings view
-  document.querySelectorAll(".view").forEach(v =>
-    v.classList.remove("active")
-  );
+  const box = document.getElementById("adminUsers");
+  const status = document.getElementById("adminStatus");
 
-  const settings = document.getElementById("settingsView");
-  if (!settings) {
-    console.error("❌ settingsView not found");
-    return;
+  try {
+    const res = await adminFetch(`${ADMIN_API_BASE}/users`);
+
+    if (res.status === 403) {
+      console.warn("⛔ not admin");
+      return;
+    }
+
+    const users = await res.json();
+    showAdminPanel();
+
+    box.innerHTML = "";
+
+    for (const u of users) {
+      const row = document.createElement("div");
+      row.className = "admin-user";
+
+      row.innerHTML = `
+        <div class="admin-user-info">
+          <b>${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)}</b><br>
+          ${escapeHtml(u.email)}
+          <div class="admin-user-date">
+            Utworzono: ${escapeHtml(u.created_at)}
+          </div>
+        </div>
+        <div class="admin-toggle">
+          <button
+            class="${u.active ? "active" : "inactive"}"
+            onclick="toggleUserActive(${u.id}, ${!u.active})"
+          >
+            ${u.active ? "AKTYWNY" : "NIEAKTYWNY"}
+          </button>
+        </div>
+      `;
+
+      box.appendChild(row);
+    }
+
+  } catch (e) {
+    console.error(e);
+    if (status) status.textContent = "❌ Błąd panelu admina";
   }
-
-  settings.classList.add("active");
-
-  // 2️⃣ pokaż panel
-  const panel = document.getElementById("adminPanel");
-  if (!panel) {
-    console.error("❌ adminPanel not found");
-    return;
-  }
-
-  panel.classList.remove("hidden");
-
-  // 3️⃣ HARD FIX — WYMUŚ STYL
-  panel.style.display = "block";
-  panel.style.visibility = "visible";
-  panel.style.opacity = "1";
-
-  // 4️⃣ 🔥 NAJWAŻNIEJSZE — SCROLL DO PANELU
-  setTimeout(() => {
-    panel.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-  }, 50);
-
-  console.log("✅ ADMIN PANEL FORCED & SCROLLED");
 }
