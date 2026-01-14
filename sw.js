@@ -3,7 +3,7 @@
 /* =========================
    🧱 VERSIONING
    ========================= */
-const VERSION = "2.0.4"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
+const VERSION = "2.0.5"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
 const CACHE_NAME = `cnsniper-${VERSION}`;
 
 /* =========================
