@@ -1409,3 +1409,8 @@ async function subscribeForPush() {
     return false;
   }
 }
+
+await apiFetch(`${API}/push/subscribe`, {
+  method: "POST",
+  body: JSON.stringify(sub),
+});
