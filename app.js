@@ -1000,6 +1000,7 @@ async function bootAppAfterLogin() {
   connectWS();
   connectHealthWS();
   loadStatsDashboard();
+  loadAdminPanel();
 }
 
 
@@ -1471,5 +1472,93 @@ async function subscribeForPush() {
   } catch (e) {
     console.error("❌ subscribeForPush:", e);
     return false;
+  }
+}
+
+/* =========================
+   🛡️ ADMIN PANEL LOGIC
+   ========================= */
+
+async function loadAdminPanel() {
+  const panel = document.getElementById("adminPanel");
+  const box = document.getElementById("adminUsers");
+  const status = document.getElementById("adminStatus");
+
+  if (!panel || !box) return;
+
+  try {
+    const res = await apiFetch(`${API}/api/admin/users`);
+
+    if (res.status === 403) {
+      // ❌ nie admin → panel niewidoczny
+      panel.classList.add("hidden");
+      return;
+    }
+
+    if (!res.ok) {
+      throw new Error("Admin fetch failed");
+    }
+
+    const users = await res.json();
+
+    panel.classList.remove("hidden");
+    box.innerHTML = "";
+
+    if (!users.length) {
+      box.innerHTML = "<p class='muted'>Brak użytkowników</p>";
+      return;
+    }
+
+    for (const u of users) {
+      const row = document.createElement("div");
+      row.className = "admin-user";
+
+      row.innerHTML = `
+        <div class="admin-user-info">
+          <b>${u.first_name} ${u.last_name}</b><br>
+          ${u.email}
+          <div class="admin-user-date">
+            Utworzono: ${u.created_at}
+          </div>
+        </div>
+
+        <div class="admin-toggle">
+          <button
+            class="${u.active ? "active" : "inactive"}"
+            onclick="toggleUserActive(${u.id}, ${!u.active})"
+          >
+            ${u.active ? "AKTYWNY" : "NIEAKTYWNY"}
+          </button>
+        </div>
+      `;
+
+      box.appendChild(row);
+    }
+
+  } catch (e) {
+    console.error("Admin panel error:", e);
+    if (status) status.textContent = "❌ Błąd ładowania panelu admina";
+  }
+}
+
+async function toggleUserActive(userId, active) {
+  try {
+    const res = await apiFetch(
+      `${API}/api/admin/users/${userId}/activate`,
+      {
+        method: "POST",
+        body: JSON.stringify({ active }),
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Toggle failed");
+    }
+
+    // 🔄 przeładuj listę
+    loadAdminPanel();
+
+  } catch (e) {
+    alert("Nie udało się zmienić statusu użytkownika");
   }
 }

@@ -1197,3 +1197,75 @@ body::before {
   font-size: 0.85rem;
   color: #ff4d6d;
 }
+
+/* =========================
+   🛡️ ADMIN PANEL
+   ========================= */
+
+.admin-panel.hidden {
+  display: none;
+}
+
+.admin-users {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.admin-user {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+
+  padding: 14px;
+  border-radius: 14px;
+
+  background: linear-gradient(
+    135deg,
+    rgba(255, 79, 216, 0.15),
+    rgba(79, 223, 255, 0.15)
+  );
+
+  box-shadow: 0 0 20px rgba(0,0,0,.6);
+}
+
+.admin-user-info {
+  font-size: 0.9em;
+}
+
+.admin-user-info b {
+  color: var(--blue);
+}
+
+.admin-user-date {
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+
+.admin-toggle {
+  align-self: center;
+}
+
+.admin-toggle button {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 0.8em;
+  min-width: 90px;
+}
+
+.admin-toggle button.active {
+  background: linear-gradient(135deg, #2ecc71, #00ff9c);
+  color: black;
+  box-shadow: 0 0 14px rgba(0,255,140,.6);
+}
+
+.admin-toggle button.inactive {
+  background: linear-gradient(135deg, #ff4d6d, #ff9f9f);
+  color: black;
+  box-shadow: 0 0 14px rgba(255,80,80,.6);
+}
