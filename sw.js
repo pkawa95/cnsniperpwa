@@ -3,9 +3,9 @@
 /* =========================
    🧱 VERSIONING
    ========================= */
-const VERSION = "2.1.5"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
+const VERSION = "2.1.2"; // 🔥 ZMIEŃ PRZY KAŻDYM DEPLOYU
 const CACHE_NAME = `cnsniper-${VERSION}`;
-
+console.log("✅ sw.js loaded");
 /* =========================
    📦 CORE ASSETS (STATIC ONLY)
    ========================= */
@@ -14,11 +14,6 @@ const CORE_ASSETS = [
   "/index.html",
   "/style.css",
   "/app.js",
-  "/stats.js",
-  "/subscribe.js",
-  "/manifest.json",
-  "/icons/icon-192.png",
-  "/icons/badge.png",
 ];
 
 /* =========================

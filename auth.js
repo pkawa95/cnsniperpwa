@@ -3,8 +3,7 @@
 // ===============================
 
 console.log("✅ auth.js loaded");
-
-const API_BASE = "https://api.cnsniper.pl";
+const API_BASE = window.API_BASE;
 
 // ===============================
 // TOKEN HELPERS

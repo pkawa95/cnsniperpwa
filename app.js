@@ -1,8 +1,33 @@
+if ("serviceWorker" in navigator) {
+  (async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      console.log("✅ SW registered", reg.scope);
+
+      if (!navigator.serviceWorker.controller) {
+        console.log("🔁 Reload to attach SW controller");
+        location.reload();
+      }
+    } catch (e) {
+      console.error("❌ SW register failed", e);
+    }
+  })();
+}
+
+function isLoggedIn() {
+  return Boolean(
+    localStorage.getItem("access_token") &&
+    localStorage.getItem("refresh_token")
+  );
+}
+
+
 /* =========================
    🌐 CONFIG
    ========================= */
 const API = "https://api.cnsniper.pl";
 const WS_URL = "wss://api.cnsniper.pl/ws/offers";
+window.API_BASE = "https://api.cnsniper.pl";
 const WS_API = API.replace(/^http/, "ws");
 
 /* =========================
@@ -1372,6 +1397,11 @@ function formatTime(sec) {
   return `${h}h ${m}m`;
 }
 
+const VAPID_PUBLIC_KEY =
+  "BLcaMptBg8239UIkJ6CSoRWhNdAXpR_UA1ZF5DP2PZgKmOKlIYuFuVvIAbCs9inWK7KVaNZ-jKb-n7DKB6t3DyE";
+
+
+
 async function subscribeForPush() {
   try {
     console.log("🚀 subscribeForPush() start");
@@ -1399,8 +1429,9 @@ async function subscribeForPush() {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(
-          window.VAPID_PUBLIC_KEY
-        ),
+  VAPID_PUBLIC_KEY
+),
+
       });
     } else {
       console.log("♻️ existing subscription reused");
@@ -1442,40 +1473,7 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
-const VAPID_PUBLIC_KEY =
-  "BLcaMptBg8239UIkJ6CSoRWhNdAXpR_UA1ZF5DP2PZgKmOKlIYuFuVvIAbCs9inWK7KVaNZ-jKb-n7DKB6t3DyE";
 
-async function subscribeForPush() {
-  try {
-    const reg = await navigator.serviceWorker.ready;
-
-    let sub = await reg.pushManager.getSubscription();
-
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-    }
-
-    const res = await apiFetch(
-      "https://api.cnsniper.pl/push/subscribe",
-      {
-        method: "POST",
-        body: JSON.stringify(sub),
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error(await res.text());
-    }
-
-    return true;
-  } catch (e) {
-    console.error("❌ subscribeForPush:", e);
-    return false;
-  }
-}
 /* =========================
    🛡️ ADMIN PANEL – FINAL
    ========================= */
@@ -1646,3 +1644,4 @@ async function handleLogout() {
   // 🔥 HARD LOGOUT FRONTEND
   forceLogout("manual", "Wylogowano");
 }
+

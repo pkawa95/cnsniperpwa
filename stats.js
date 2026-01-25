@@ -2,7 +2,7 @@
    📊 STATS DASHBOARD
    ========================= */
 
-const API_BASE = "https://api.cnsniper.pl";
+const API_BASE = window.API_BASE;
 
 let statsCache = {
   global: null,
@@ -17,10 +17,27 @@ let currentStatsView = "global";
    ========================= */
 async function loadStatsDashboard() {
   try {
+    const base = window.API_BASE;
+    if (!base) {
+      throw new Error("API_BASE is not defined on window");
+    }
+
+    const [gRes, tRes, wRes] = await Promise.all([
+      fetch(`${base}/stats/global`),
+      fetch(`${base}/stats/today`),
+      fetch(`${base}/stats/weekly`),
+    ]);
+
+    if (!gRes.ok || !tRes.ok || !wRes.ok) {
+      throw new Error(
+        `HTTP error: global=${gRes.status}, today=${tRes.status}, weekly=${wRes.status}`
+      );
+    }
+
     const [g, t, w] = await Promise.all([
-      fetch(`${API_BASE}/stats/global`).then(r => r.json()),
-      fetch(`${API_BASE}/stats/today`).then(r => r.json()),
-      fetch(`${API_BASE}/stats/weekly`).then(r => r.json()),
+      gRes.json(),
+      tRes.json(),
+      wRes.json(),
     ]);
 
     statsCache.global = g || {};
@@ -28,11 +45,13 @@ async function loadStatsDashboard() {
     statsCache.weekly = w || {};
 
     renderStats();
+
   } catch (e) {
     console.error("❌ STATS LOAD ERROR", e);
     renderEmpty("❌ Błąd ładowania statystyk");
   }
 }
+
 
 /* =========================
    🔀 VIEW SWITCH

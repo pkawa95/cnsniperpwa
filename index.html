@@ -258,16 +258,10 @@
   <script src="register.js"></script>
   <script src="app.js"></script>
   <script src="stats.js"></script>
-  <script src="subscribe.js"></script>
-  <script src="auth.js"></script>
-  <script src="register.js"></script>
 
 
   <!-- SERVICE WORKER -->
   <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js");
-  }
     // iOS – blokada pinch zoom
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('gesturechange', e => e.preventDefault());
